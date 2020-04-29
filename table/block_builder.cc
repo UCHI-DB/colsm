@@ -30,15 +30,10 @@
 
 #include <algorithm>
 #include <cassert>
-#include <immintrin.h>
 
 #include "leveldb/comparator.h"
 #include "leveldb/options.h"
-
 #include "util/coding.h"
-
-#include "block.h"
-#include "byteutils.h"
 
 namespace leveldb {
 
@@ -77,9 +72,6 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   Slice last_key_piece(last_key_);
   assert(!finished_);
   assert(counter_ <= options_->block_restart_interval);
-  if (options_->comparator->Compare(key, last_key_piece) <= 0) {
-    return;
-  }
   assert(buffer_.empty()  // No values yet?
          || options_->comparator->Compare(key, last_key_piece) > 0);
   size_t shared = 0;

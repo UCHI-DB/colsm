@@ -18,7 +18,13 @@ class Encoder {
  public:
   virtual ~Encoder() = default;
 
-  virtual void Encode(const Slice&) = 0;
+  virtual void Encode(const Slice&) {}
+
+  virtual void Encode(const uint64_t&) {}
+
+  virtual void Encode(const uint32_t&) {}
+
+  virtual void Encode(const uint8_t&) {}
 
   virtual void Close() = 0;
 
@@ -36,7 +42,13 @@ class Decoder {
   // Move forward by records
   virtual void Skip(uint32_t offset) = 0;
 
-  virtual Slice Decode() = 0;
+  virtual Slice Decode() { return Slice(); }
+
+  virtual uint64_t DecodeU64() { return 0; }
+
+  virtual uint32_t DecodeU32() { return 0; }
+
+  virtual uint8_t DecodeU8() { return 0; }
 };
 
 class Encoding {
@@ -47,11 +59,15 @@ class Encoding {
 };
 
 enum Encodings {
+  // For String
   // Store data in <length, value> pair
   PLAIN,
   // Store data in <offset...> <value...>
   LENGTH,
-  BITPACK
+  // For numbers
+  BITPACK,
+  RL8,
+  DELTA
 };
 
 class EncodingFactory {

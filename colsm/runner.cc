@@ -19,23 +19,23 @@ int main() {
   leveldb::Status status = leveldb::DB::Open(options, "/tmp/testdb", &db);
   assert(status.ok());
 
-//  int intkey;
-//  std::string strvalue = "demo value";
-//
-//  leveldb::Slice key((const char*)&intkey, 4);
-//  leveldb::Slice value(strvalue.data(), strvalue.size());
-//
-//  leveldb::Status s;
-//
-//  for (int i = 0; i < 10000000; ++i) {
-//    intkey = i;
-//    if (s.ok()) {
-//      s = db->Put(leveldb::WriteOptions(), key, value);
-//    } else {
-//      std::cerr << "Write failure" << '\n';
-//      break;
-//    }
-//  }
+  int intkey;
+  std::string strvalue = "demo value";
+
+  leveldb::Slice key((const char*)&intkey, 4);
+  leveldb::Slice value(strvalue.data(), strvalue.size());
+
+  leveldb::Status s;
+
+  for (int i = 0; i < 10000000; ++i) {
+    intkey = i;
+    if (s.ok()) {
+      s = db->Put(leveldb::WriteOptions(), key, value);
+    } else {
+      std::cerr << "Write failure" << '\n';
+      break;
+    }
+  }
 
   delete options.filter_policy;
 }

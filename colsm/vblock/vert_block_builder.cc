@@ -5,6 +5,7 @@
 #include "vert_block_builder.h"
 
 #include "table/format.h"
+#include "db/dbformat.h"
 
 namespace colsm {
 
@@ -55,7 +56,16 @@ VertBlockBuilder::~VertBlockBuilder() {
 
 // Assert the keys and values are both int32_t
 void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
-  int32_t intkey = *reinterpret_cast<const int32_t*>(key.data());
+  // Need to handle the internal key
+
+  ParsedInternalKey internal_key;
+  ParseInternalKey(key, &internal_key);
+
+  int32_t intkey = *reinterpret_cast<const int32_t*>(internal_key.user_key.data());
+
+  // TODO write other parts of the internal key
+  assert(false);
+
   if (current_section_ == NULL) {
     current_section_ = new VertSection(encoding_);
     current_section_->StartValue(intkey);
