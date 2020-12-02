@@ -39,6 +39,31 @@ class Block {
   bool owned_;               // Block owns data_[]
 };
 
+class VertBlock {
+ public:
+  // Initialize the block with the specified contents.
+  explicit VertBlock(const BlockContents&);
+
+  VertBlock(const VertBlock&) = delete;
+  VertBlock& operator=(const VertBlock&) = delete;
+
+  ~VertBlock();
+
+  size_t size() const { return size_; }
+  Iterator* NewIterator(const Comparator* comparator);
+
+ private:
+  class VIter;
+
+  const char* data_;
+
+  const char* key_data_;
+  const char* value_data_;
+
+  size_t size_;
+  bool owned_;
+};
+
 }  // namespace leveldb
 
 #endif  // STORAGE_LEVELDB_TABLE_BLOCK_H_

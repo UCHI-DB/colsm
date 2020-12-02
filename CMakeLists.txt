@@ -6,6 +6,19 @@ cmake_minimum_required(VERSION 3.9)
 # Keep the version below in sync with the one in db.h
 project(leveldb VERSION 1.22.0 LANGUAGES C CXX)
 
+string(TOUPPER ${CMAKE_BUILD_TYPE} UPPERCASE_BUILD_TYPE)
+set(CMAKE_BUILD_TYPE ${UPPERCASE_BUILD_TYPE})
+string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_SUBDIR_NAME)
+set(BUILD_OUTPUT_ROOT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${BUILD_SUBDIR_NAME}/")
+
+set(C_FLAGS_DEBUG "-ggdb -O0")
+set(C_FLAGS_FASTDEBUG "-ggdb -O1")
+set(CXX_FLAGS_DEBUG "-ggdb -O0")
+set(CXX_FLAGS_FASTDEBUG "-ggdb -O1")
+set(C_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+
+
 # C standard can be overridden when this is used as a sub-project.
 if(NOT CMAKE_C_STANDARD)
   # This project can use C11, but will gracefully decay down to C89.
@@ -94,6 +107,11 @@ check_cxx_source_compiles("
 #endif
 int main() { std::string str; return 0; }
 " HAVE_CXX17_HAS_INCLUDE)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
+include(CMakePackageConfigHelpers)
+
+include(Thirdparty)
 
 set(LEVELDB_PUBLIC_INCLUDE_DIR "include/leveldb")
 set(LEVELDB_PORT_CONFIG_DIR "include/port")
@@ -267,6 +285,11 @@ if(HAVE_CLANG_THREAD_SAFETY)
       -Werror -Wthread-safety)
 endif(HAVE_CLANG_THREAD_SAFETY)
 
+build_sboost()
+target_compile_options(leveldb PUBLIC ${SBOOST_SIMD_FLAGS})
+target_compile_options(leveldb PUBLIC "-mlzcnt")
+target_link_libraries(leveldb sboost_static)
+
 if(HAVE_CRC32C)
   target_link_libraries(leveldb crc32c)
 endif(HAVE_CRC32C)
@@ -285,6 +308,20 @@ add_executable(leveldbutil
   "db/leveldbutil.cc"
 )
 target_link_libraries(leveldbutil leveldb)
+
+# Microbenchmarks
+# TODO This need to put to a more organized place
+build_gbenchmark()
+set(LEVELDB_MICROBENCHMARK_LINK_OPTION benchmark::benchmark benchmark::benchmark_main Threads::Threads
+        leveldb)
+
+add_executable(leveldb_block_benchmark table/block_benchmark.cc)
+target_link_libraries(leveldb_block_benchmark PRIVATE ${LEVELDB_MICROBENCHMARK_LINK_OPTION})
+target_compile_options(leveldb_block_benchmark PUBLIC ${SBOOST_SIMD_FLAGS})
+
+add_executable(leveldb_block_runner table/block_runner.cc)
+target_link_libraries(leveldb_block_runner PRIVATE leveldb)
+target_compile_options(leveldb_block_runner PUBLIC ${SBOOST_SIMD_FLAGS})
 
 if(LEVELDB_BUILD_TESTS)
   enable_testing()

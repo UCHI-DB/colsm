@@ -30,10 +30,14 @@
 
 #include <algorithm>
 #include <cassert>
+#include <immintrin.h>
 
 #include "leveldb/comparator.h"
 #include "leveldb/options.h"
+
 #include "util/coding.h"
+
+#include "byteutils.h"
 
 namespace leveldb {
 
@@ -72,6 +76,9 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   Slice last_key_piece(last_key_);
   assert(!finished_);
   assert(counter_ <= options_->block_restart_interval);
+  if(options_->comparator->Compare(key, last_key_piece) <=0) {
+    return;
+  }
   assert(buffer_.empty()  // No values yet?
          || options_->comparator->Compare(key, last_key_piece) > 0);
   size_t shared = 0;
@@ -102,6 +109,108 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   last_key_.append(key.data() + shared, non_shared);
   assert(Slice(last_key_) == key);
   counter_++;
+}
+
+//
+// VertBlockBuilder generate blocks that are columnar encoded
+//
+// A vertical block consists of two data columns, each a char array
+//   const char* key_data_;
+//   const char* value_data_;
+//
+// As the entries are sorted by keys, we split the key into blocks and
+// bit-pack them. The format is as following:
+//
+//    data:    num_sections:uint32_t
+//             section_size:uint32_t (num of entries)
+//             <section>{num_section}
+//    section: section_length: int32_t (bytes)
+//             section_first: int32_t
+//             section_last: int32_t
+//             bit_width: uint8_t
+//             <entry>{section_size}
+//    entry: bit-packed integer
+//
+//  The value column can be encoded with any valid encoding that supports
+//  fast skipping. For now we just use plain encoding
+
+VertBlockBuilder::VertBlockBuilder(const Options* options) {
+  section_size_ = 32768;
+}
+
+// Assert the keys and values are both int32_t
+void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
+  int32_t intkey = DecodeFixed32(key.data());
+  section_buffer_.push_back(intkey);
+  // Directly append the value to buffer
+  value_buffer_.append(value.data(), 4);
+  if (section_buffer_.size() == section_size_) {
+    DumpSection();
+  }
+}
+
+void VertBlockBuilder::DumpSection() {
+  auto section_header = section_buffer_[0];
+  auto size = section_buffer_.size();
+  auto section_tail = section_buffer_[size - 1];
+
+  for (int i = 0; i < section_buffer_.size(); ++i) {
+    section_buffer_[i] -= section_header;
+  }
+
+  uint8_t bitwidth = 32 - _lzcnt_u32((uint32_t)section_buffer_[size - 1]);
+
+  std::string section;
+  auto section_bytes = ((size * bitwidth + 63) >> 6 << 3) + 13;
+  section.reserve(section_bytes);
+  PutFixed32(&section, section_bytes);
+  PutFixed32(&section, section_header);
+  PutFixed32(&section, section_tail);
+  section.push_back(bitwidth);
+  section.resize(section_bytes);
+  sboost::byteutils::bitpack(section_buffer_.data(), size, bitwidth,
+                             (uint8_t*)section.data() + 13);
+  key_buffer_.push_back(std::move(section));
+
+  section_buffer_.clear();
+
+  block_bytes_+=section_bytes;
+}
+
+void VertBlockBuilder::Reset() {
+  section_buffer_.clear();
+  key_buffer_.clear();
+  value_buffer_.clear();
+}
+
+Slice VertBlockBuilder::Finish() {
+  DumpSection();
+  // value location, key sections, value values
+  auto size = 1 + block_bytes_ + value_buffer_.size();
+  char* buffer = (char*) malloc(size);
+
+  char*pos = buffer;
+  *((uint32_t*)pos) = block_bytes_;
+  pos+=4;
+  *((uint32_t*)pos) = key_buffer_.size();
+  pos+=4;
+  *((uint32_t*)pos) = section_size_;
+  pos+=4;
+  for(auto& section:key_buffer_) {
+    memcpy(pos,section.data(),section.size());
+    pos+=section.size();
+  }
+  memcpy(pos, value_buffer_.data(),value_buffer_.size());
+  return Slice(buffer,size);
+}
+
+size_t VertBlockBuilder::CurrentSizeEstimate() const {
+  // Not support
+  return 0;
+}
+
+bool VertBlockBuilder::empty() const {
+  return value_buffer_.empty();
 }
 
 }  // namespace leveldb

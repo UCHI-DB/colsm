@@ -11,9 +11,12 @@
 #include <vector>
 
 #include "leveldb/comparator.h"
+
 #include "table/format.h"
 #include "util/coding.h"
 #include "util/logging.h"
+
+#include "sboost.h"
 
 namespace leveldb {
 
@@ -264,4 +267,116 @@ Iterator* Block::NewIterator(const Comparator* comparator) {
   }
 }
 
+VertBlock::VertBlock(const BlockContents& data)
+    : data_(data.data.data()), owned_(data.heap_allocated) {
+  uint32_t key_length = *((uint32_t*)data_);
+  key_data_ = data_ + 4;
+  value_data_ = key_data_ + key_length;
+}
+
+VertBlock::~VertBlock() {
+  if (owned_) {
+    delete[] data_;
+  }
+}
+
+class VertBlock::VIter : public Iterator {
+ private:
+  const Comparator* const comparator_;
+  const char* key_data_;
+  const char* value_data_;
+
+  Status status_;
+
+  uint32_t section_size_;
+  uint32_t num_sections_;
+
+  uint32_t section_read_counter_;
+  const char* current_section_header_;
+  uint32_t current_section_bytes_;
+  int32_t current_min_;
+  int32_t current_max_;
+  uint8_t current_bitwidth_;
+  const char* next_section_start_;
+
+  bool ReadNextSection() {
+    if ((section_read_counter_++) >= num_sections_) {
+      return false;
+    }
+    auto current_section_start = next_section_start_;
+    current_section_bytes_ = DecodeFixed32(next_section_start_);
+    next_section_start_ += current_section_bytes_;
+    current_min_ = DecodeFixed32(current_section_start + 4);
+    current_max_ = DecodeFixed32(current_section_start + 8);
+    current_bitwidth_ = *((const uint8_t*)current_section_start + 12);
+    current_section_header_ = current_section_start + 13;
+    return true;
+  }
+
+  int32_t FindInSection(int32_t target) {
+    const char* pointer = current_section_header_;
+    if (current_min_ > target || current_max_ < target) {
+      // Not in this block
+      return -1;
+    }
+    if (current_min_ == target) {
+      return 0;
+    }
+    if (current_max_ == target) {
+      return section_size_ - 1;
+    }
+    sboost::SortedBitpack sbp(current_bitwidth_, target - current_min_);
+    return sbp.geq((const uint8_t*)pointer, section_size_);
+  }
+
+ public:
+  VIter(const Comparator* comparator, const char* key_data,
+        const char* value_data)
+      : comparator_(comparator), key_data_(key_data), value_data_(value_data) {
+    num_sections_ = DecodeFixed32(key_data);
+    next_section_start_ = key_data_ + 4;
+    section_size_ = DecodeFixed32(next_section_start_);
+    next_section_start_ += 4;
+    section_read_counter_ = 0;
+    ReadNextSection();
+  }
+
+  void Seek(const Slice& target) override {
+    // Scan through blocks
+    int32_t target_key = DecodeFixed32(target.data());
+    int32_t offset;
+    while ((offset = FindInSection(target_key)) == -1 && ReadNextSection())
+      ;
+    if (offset != -1) {
+      // Found the key in block, decode the key and value
+    } else {
+      // Not found
+      status_ = Status::NotFound(target);
+    }
+  }
+
+  void SeekToFirst() override {
+    section_read_counter_ = 0;
+    next_section_start_ = key_data_ + 8;
+    ReadNextSection();
+  }
+
+  void SeekToLast() override {}
+
+  void Next() override {}
+
+  void Prev() override {}
+
+  bool Valid() const override { return section_read_counter_ < num_sections_; }
+
+  Slice key() const override {}
+
+  Slice value() const override {}
+
+  Status status() const override {}
+};
+
+Iterator* VertBlock::NewIterator(const Comparator* comparator) {
+  return new VIter(comparator, key_data_, value_data_);
+}
 }  // namespace leveldb
