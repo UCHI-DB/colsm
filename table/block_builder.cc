@@ -114,23 +114,26 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
 //
 // VertBlockBuilder generate blocks that are columnar encoded
 //
-// A vertical block consists of two data columns, each a char array
-//   const char* key_data_;
-//   const char* value_data_;
+// A vertical block consists of two data columns, the keys and the values.
+// As the entries are sorted by keys, we split the columns into blocks by key
+// and bit-pack them. The data format is as following:
 //
-// As the entries are sorted by keys, we split the key into blocks and
-// bit-pack them. The format is as following:
+//    data:      metadata
+//               sections {num_section}
+//    metadata:  num_section    : uint32_t
+//               section_offsets: uint64_t{num_section}
+//               start_min      : int32_t
+//               start_bitwidth : uint8_t
+//               starts         : bit-packed uint32_t
+//    section:   key_data_length: int32_t (bytes)
+//               bit_width      : uint8_t
+//               keys {section_size}
+//               values {section_size}
+//    keys:      bit-packed integer
 //
-//    data:    num_sections:uint32_t
-//             section_size:uint32_t (num of entries)
-//             <section>{num_section}
-//    section: section_length: int32_t (bytes)
-//             section_first: int32_t
-//             section_last: int32_t
-//             bit_width: uint8_t
-//             <entry>{section_size}
-//    entry: bit-packed integer
-//
+//  We temporarily put metadata in header. Later this should be put in footer
+//  for writing big files.
+
 //  The value column can be encoded with any valid encoding that supports
 //  fast skipping. For now we just use plain encoding
 

@@ -1,6 +1,7 @@
 //
 // Created by Hao Jiang on 12/2/20.
 //
+#include <iostream>
 #include "block.h"
 #include "block_builder.h"
 #include "format.h"
@@ -45,6 +46,9 @@ class IntComparator : public Comparator {
   }
 
   int Compare(const Slice& a, const Slice& b) const override {
+    if(b.size() < a.size()) {
+      return 1;
+    }
     int aint = *((int32_t*)a.data());
     int bint = *((int32_t*)b.data());
     return aint - bint;
@@ -62,8 +66,6 @@ class IntComparator : public Comparator {
 void runNormal() {
   uint32_t intkey;
   uint32_t intvalue;
-  Slice key((const char*)&intkey, 4);
-  Slice value((const char*)&intvalue, 4);
 
   Options option;
   option.comparator = new IntComparator();
@@ -72,6 +74,8 @@ void runNormal() {
   for (uint32_t i = 0; i < 100000; ++i) {
     intkey = i;
     intvalue = i;
+    Slice key((const char*)&intkey, 4);
+    Slice value((const char*)&intvalue, 4);
     builder.Add(key,value);
   }
   auto result = builder.Finish();
@@ -86,6 +90,7 @@ void runNormal() {
   int a = 39703;
   Slice target((const char*)&a,4);
   ite->Seek(target);
+  auto key = ite->key();
   delete ite;
 
   delete option.comparator;

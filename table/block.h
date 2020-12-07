@@ -39,6 +39,30 @@ class Block {
   bool owned_;               // Block owns data_[]
 };
 
+class VertBlockMeta {
+ private:
+  uint32_t num_section_;
+  uint64_t* section_offsets_;
+  int32_t start_min_;
+  uint8_t start_bitwidth_;
+  uint8_t* starts_;
+
+ public:
+  VertBlockMeta();
+  virtual ~VertBlockMeta();
+
+  /**
+   * Read the metadata from the given buffer location.
+   * @return the bytes read
+   */
+  uint32_t Read(const char*);
+  /**
+   * Write metadata to the buffer
+   * @return the bytes written
+   */
+  uint32_t Write(char*);
+};
+
 class VertBlock {
  public:
   // Initialize the block with the specified contents.
