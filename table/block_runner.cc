@@ -2,10 +2,12 @@
 // Created by Hao Jiang on 12/2/20.
 //
 #include <iostream>
+
+#include "leveldb/comparator.h"
+
 #include "block.h"
 #include "block_builder.h"
 #include "format.h"
-#include "leveldb/comparator.h"
 
 using namespace leveldb;
 
@@ -31,22 +33,59 @@ void runVert() {
   VertBlock vertBlock(content);
 
   auto ite = vertBlock.NewIterator(NULL);
-
   int a = 39703;
-  Slice target((const char*)&a,4);
+  Slice target((const char*)&a, 4);
   ite->Seek(target);
+  std::cout << *((const int32_t*)ite->key().data()) << std::endl;
   delete ite;
 }
 using namespace leveldb;
 
+bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
+
+void runNormal() {
+  std::vector<int32_t> buffer;
+  for (auto i = 0; i < 100000; ++i) {
+    buffer.push_back(i);
+  }
+  std::sort(buffer.begin(), buffer.end(), binary_sorter);
+
+  uint32_t intkey;
+  uint32_t intvalue;
+
+  Options option;
+  option.comparator = leveldb::BytewiseComparator();
+  BlockBuilder builder((const Options*)&option);
+
+  for (auto i = 0; i < 100000; ++i) {
+    intkey = buffer[i];
+    intvalue = i;
+    Slice key((const char*)&intkey, 4);
+    Slice value((const char*)&intvalue, 4);
+    builder.Add(key, value);
+  }
+  auto result = builder.Finish();
+  char* copied = (char*)malloc(result.size());
+  memcpy(copied, result.data(), result.size());
+  Slice heap(copied, result.size());
+  BlockContents content{heap, true, true};
+  Block block(content);
+
+  auto ite = block.NewIterator(option.comparator);
+
+  int a = 39703;
+  Slice target((const char*)&a, 4);
+  ite->Seek(target);
+  std::cout << *((const int32_t*)ite->key().data()) << std::endl;
+  delete ite;
+}
+
 class IntComparator : public Comparator {
  public:
-  const char* Name() const override {
-    return "IntComparator";
-  }
+  const char* Name() const override { return "IntComparator"; }
 
   int Compare(const Slice& a, const Slice& b) const override {
-    if(b.size() < a.size()) {
+    if (b.size() < a.size()) {
       return 1;
     }
     int aint = *((int32_t*)a.data());
@@ -55,15 +94,12 @@ class IntComparator : public Comparator {
   }
 
   void FindShortestSeparator(std::string* start,
-                             const Slice& limit) const override {
-  }
+                             const Slice& limit) const override {}
 
-  void FindShortSuccessor(std::string* key) const override {
-  }
+  void FindShortSuccessor(std::string* key) const override {}
 };
 
-
-void runNormal() {
+void runNormalWithIntKey() {
   uint32_t intkey;
   uint32_t intvalue;
 
@@ -76,26 +112,23 @@ void runNormal() {
     intvalue = i;
     Slice key((const char*)&intkey, 4);
     Slice value((const char*)&intvalue, 4);
-    builder.Add(key,value);
+    builder.Add(key, value);
   }
   auto result = builder.Finish();
   char* copied = (char*)malloc(result.size());
-  memcpy(copied,result.data(),result.size());
-  Slice heap(copied,result.size());
-  BlockContents content{heap,true,true};
+  memcpy(copied, result.data(), result.size());
+  Slice heap(copied, result.size());
+  BlockContents content{heap, true, true};
   Block block(content);
 
   auto ite = block.NewIterator(option.comparator);
-
   int a = 39703;
-  Slice target((const char*)&a,4);
+  Slice target((const char*)&a, 4);
   ite->Seek(target);
-  auto key = ite->key();
+  std::cout << *((const int32_t*)ite->key().data()) << std::endl;
   delete ite;
 
   delete option.comparator;
 }
 
-int main() {
-  runVert();
-}
+int main() { runVert(); }

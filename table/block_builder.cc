@@ -138,7 +138,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
 //  fast skipping. For now we just use plain encoding
 
 VertBlockBuilder::VertBlockBuilder(const Options* options)
-    : section_size_(32768),
+    : section_size_(128),
       offset_(0),
       current_section_(NULL),
       internal_buffer_(NULL) {}
@@ -171,6 +171,7 @@ void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
 void VertBlockBuilder::DumpSection() {
   meta_.AddSection(offset_, current_section_->StartValue());
   offset_ += current_section_->EstimateSize();
+  section_buffer_.push_back(current_section_);
   current_section_ = NULL;
 }
 
@@ -196,7 +197,7 @@ Slice VertBlockBuilder::Finish() {
   // Allocate Space
   // TODO In real world this should be directly write to file
   internal_buffer_ = new char[meta_size + section_size];
-
+  memset(internal_buffer_, 0, meta_size + section_size);
   meta_.Write(internal_buffer_);
   auto pointer = internal_buffer_ + meta_size;
 

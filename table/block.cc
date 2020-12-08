@@ -6,6 +6,7 @@
 
 #include "table/block.h"
 
+#include <iostream>
 #include <algorithm>
 #include <cstdint>
 #include <vector>
@@ -167,11 +168,14 @@ class Block::Iter : public Iterator {
   }
 
   void Seek(const Slice& target) override {
+//    std::cout << num_restarts_ << std::endl;
     // Binary search in restart array to find the last restart point
     // with a key < target
     uint32_t left = 0;
     uint32_t right = num_restarts_ - 1;
+    auto loop = 0;
     while (left < right) {
+      loop++;
       uint32_t mid = (left + right + 1) / 2;
       uint32_t region_offset = GetRestartPoint(mid);
       uint32_t shared, non_shared, value_length;
@@ -194,6 +198,7 @@ class Block::Iter : public Iterator {
       }
     }
 
+//    std::cout << loop << std::endl;
     // Linear search (within restart block) for first key >= target
     SeekToRestartPoint(left);
     while (true) {
@@ -269,13 +274,10 @@ Iterator* Block::NewIterator(const Comparator* comparator) {
   }
 }
 
-VertBlockMeta::VertBlockMeta() : num_section_(0), starts_(NULL) {}
+VertBlockMeta::VertBlockMeta()
+    : num_section_(0), start_min_(0), start_bitwidth_(0), starts_(NULL) {}
 
-VertBlockMeta::~VertBlockMeta() {
-  if (starts_ != NULL) {
-    delete starts_;
-  }
-}
+VertBlockMeta::~VertBlockMeta() {}
 
 void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
   num_section_++;
@@ -287,6 +289,7 @@ void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
 }
 
 uint64_t VertBlockMeta::Search(int32_t value) {
+//  std::cout << num_section_ << "," << (int32_t)start_bitwidth_ << std::endl;
   auto target = value - start_min_;
   sboost::SortedBitpack sbp(start_bitwidth_, target);
   auto index = sbp.greater(starts_, num_section_);
@@ -304,10 +307,7 @@ uint32_t VertBlockMeta::Read(const char* in) {
   pointer += 4;
   start_bitwidth_ = *(pointer++);
 
-  auto starts_size = BitPackSize();
-  starts_ = (uint8_t*)malloc(starts_size);
-  memcpy(starts_, pointer, starts_size);
-  pointer += starts_size;
+  starts_ = (uint8_t*)pointer;
 
   return pointer - in;
 }
@@ -336,13 +336,14 @@ uint32_t VertBlockMeta::Write(char* out) {
   //  memcpy(pointer, starts_, (start_bitwidth_ * num_section_ + 7) >> 3);
 }
 
-VertSection::VertSection() : estimated_size_(0) {}
+VertSection::VertSection() : num_entry_(0), estimated_size_(0) {}
 
 VertSection::~VertSection() {}
 
 void VertSection::Add(int32_t key, const Slice& value) {
+  num_entry_++;
   keys_plain_.push_back(key - start_value_);
-  // Ignore value for now
+  // TODO Ignore value for now
 }
 
 uint32_t VertSection::EstimateSize() {
@@ -374,6 +375,8 @@ void VertSection::Read(const char* in) {
   pointer += 4;
   bit_width_ = *reinterpret_cast<const uint8_t*>(pointer++);
   keys_data_ = reinterpret_cast<const uint8_t*>(pointer);
+  // Recompute estimated size
+  estimated_size_ = 9 + BitPackSize();
 }
 
 int32_t VertSection::Find(int32_t target) {
@@ -435,10 +438,12 @@ class VertBlock::VIter : public Iterator {
       // Unpack 8 entries at a time, read bit_width_ bytes at a time
       unpacker_ = sboost::unpackers[section.BitWidth()];
       auto group_index = index >> 3;
-      auto group_offset = index & 0x7F;
+      auto group_offset = index & 0x7;
       auto group_start = section.KeysData() + group_index * section.BitWidth();
       auto unpacked = unpacker_->unpack(group_start);
-      intkey_ = unpacked[group_offset];
+      auto entry =
+          (unpacked[group_offset / 2] >> (32 * (group_offset & 1))) & -1;
+      intkey_ = entry + section.StartValue();
     }
   }
 

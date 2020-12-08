@@ -96,7 +96,7 @@ class VertSection {
 
   std::vector<uint32_t> keys_plain_;
 
-  uint32_t BitPackSize() { return (bit_width_ * num_entry_ + 63) >> 6; }
+  uint32_t BitPackSize() { return (bit_width_ * num_entry_ + 63) >> 6 << 3; }
 
  public:
   VertSection();

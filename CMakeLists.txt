@@ -318,6 +318,7 @@ set(LEVELDB_MICROBENCHMARK_LINK_OPTION benchmark::benchmark benchmark::benchmark
 add_executable(leveldb_block_benchmark table/block_benchmark.cc)
 target_link_libraries(leveldb_block_benchmark PRIVATE ${LEVELDB_MICROBENCHMARK_LINK_OPTION})
 target_compile_options(leveldb_block_benchmark PUBLIC ${SBOOST_SIMD_FLAGS})
+#target_compile_options(leveldb_block_benchmark PUBLIC "-O3")
 
 add_executable(leveldb_block_runner table/block_runner.cc)
 target_link_libraries(leveldb_block_runner PRIVATE leveldb)
@@ -398,6 +399,7 @@ if(LEVELDB_BUILD_TESTS)
 
     leveldb_test("table/filter_block_test.cc")
     leveldb_test("table/table_test.cc")
+    leveldb_test("table/block_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")
