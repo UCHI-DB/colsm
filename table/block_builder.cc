@@ -37,6 +37,7 @@
 
 #include "util/coding.h"
 
+#include "block.h"
 #include "byteutils.h"
 
 namespace leveldb {
@@ -76,7 +77,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   Slice last_key_piece(last_key_);
   assert(!finished_);
   assert(counter_ <= options_->block_restart_interval);
-  if(options_->comparator->Compare(key, last_key_piece) <=0) {
+  if (options_->comparator->Compare(key, last_key_piece) <= 0) {
     return;
   }
   assert(buffer_.empty()  // No values yet?
@@ -125,11 +126,10 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
 //               start_min      : int32_t
 //               start_bitwidth : uint8_t
 //               starts         : bit-packed uint32_t
-//    section:   key_data_length: int32_t (bytes)
+//    section:   num_entry      : uint32_t
 //               bit_width      : uint8_t
-//               keys {section_size}
-//               values {section_size}
-//    keys:      bit-packed integer
+//               keys {num_entry}
+//               values {num_entry}
 //
 //  We temporarily put metadata in header. Later this should be put in footer
 //  for writing big files.
@@ -137,74 +137,75 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
 //  The value column can be encoded with any valid encoding that supports
 //  fast skipping. For now we just use plain encoding
 
-VertBlockBuilder::VertBlockBuilder(const Options* options) {
-  section_size_ = 32768;
+VertBlockBuilder::VertBlockBuilder(const Options* options)
+    : section_size_(32768),
+      offset_(0),
+      current_section_(NULL),
+      internal_buffer_(NULL) {}
+
+VertBlockBuilder::~VertBlockBuilder() {
+  for (auto& section : section_buffer_) {
+    delete section;
+  }
+  if (current_section_ != NULL) {
+    delete current_section_;
+  }
+  if (internal_buffer_ == NULL) {
+    delete internal_buffer_;
+  }
 }
 
 // Assert the keys and values are both int32_t
 void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
-  int32_t intkey = DecodeFixed32(key.data());
-  section_buffer_.push_back(intkey);
-  // Directly append the value to buffer
-  value_buffer_.append(value.data(), 4);
-  if (section_buffer_.size() == section_size_) {
+  int32_t intkey = *reinterpret_cast<const int32_t*>(key.data());
+  if (current_section_ == NULL) {
+    current_section_ = new VertSection();
+    current_section_->StartValue(intkey);
+  }
+  current_section_->Add(intkey, value);
+  if (current_section_->NumEntry() >= section_size_) {
     DumpSection();
   }
 }
 
 void VertBlockBuilder::DumpSection() {
-  auto section_header = section_buffer_[0];
-  auto size = section_buffer_.size();
-  auto section_tail = section_buffer_[size - 1];
-
-  for (int i = 0; i < section_buffer_.size(); ++i) {
-    section_buffer_[i] -= section_header;
-  }
-
-  uint8_t bitwidth = 32 - _lzcnt_u32((uint32_t)section_buffer_[size - 1]);
-
-  std::string section;
-  auto section_bytes = ((size * bitwidth + 63) >> 6 << 3) + 13;
-  section.reserve(section_bytes);
-  PutFixed32(&section, section_bytes);
-  PutFixed32(&section, section_header);
-  PutFixed32(&section, section_tail);
-  section.push_back(bitwidth);
-  section.resize(section_bytes);
-  sboost::byteutils::bitpack(section_buffer_.data(), size, bitwidth,
-                             (uint8_t*)section.data() + 13);
-  key_buffer_.push_back(std::move(section));
-
-  section_buffer_.clear();
-
-  block_bytes_+=section_bytes;
+  meta_.AddSection(offset_, current_section_->StartValue());
+  offset_ += current_section_->EstimateSize();
+  current_section_ = NULL;
 }
 
 void VertBlockBuilder::Reset() {
-  section_buffer_.clear();
-  key_buffer_.clear();
-  value_buffer_.clear();
+  for (auto& sec : section_buffer_) {
+    delete sec;
+  }
+  if (current_section_ != NULL) {
+    delete current_section_;
+    current_section_ = NULL;
+  }
+  offset_ = 0;
+  // TODO Reset meta
 }
 
 Slice VertBlockBuilder::Finish() {
   DumpSection();
-  // value location, key sections, value values
-  auto size = 1 + block_bytes_ + value_buffer_.size();
-  char* buffer = (char*) malloc(size);
+  meta_.Finish();
 
-  char*pos = buffer;
-  *((uint32_t*)pos) = block_bytes_;
-  pos+=4;
-  *((uint32_t*)pos) = key_buffer_.size();
-  pos+=4;
-  *((uint32_t*)pos) = section_size_;
-  pos+=4;
-  for(auto& section:key_buffer_) {
-    memcpy(pos,section.data(),section.size());
-    pos+=section.size();
+  auto meta_size = meta_.EstimateSize();
+  auto section_size = offset_;
+
+  // Allocate Space
+  // TODO In real world this should be directly write to file
+  internal_buffer_ = new char[meta_size + section_size];
+
+  meta_.Write(internal_buffer_);
+  auto pointer = internal_buffer_ + meta_size;
+
+  for (auto& sec : section_buffer_) {
+    sec->Write(pointer);
+    pointer += sec->EstimateSize();
   }
-  memcpy(pos, value_buffer_.data(),value_buffer_.size());
-  return Slice(buffer,size);
+
+  return Slice(internal_buffer_, meta_size + section_size);
 }
 
 size_t VertBlockBuilder::CurrentSizeEstimate() const {
@@ -212,8 +213,6 @@ size_t VertBlockBuilder::CurrentSizeEstimate() const {
   return 0;
 }
 
-bool VertBlockBuilder::empty() const {
-  return value_buffer_.empty();
-}
+bool VertBlockBuilder::empty() const {}
 
 }  // namespace leveldb
