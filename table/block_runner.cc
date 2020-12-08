@@ -97,5 +97,5 @@ void runNormal() {
 }
 
 int main() {
-  runNormal();
+  runVert();
 }

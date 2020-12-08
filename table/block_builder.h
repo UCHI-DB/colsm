@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "leveldb/slice.h"
+#include "block.h"
 
 namespace leveldb {
 
@@ -59,6 +60,8 @@ class VertBlockBuilder {
   VertBlockBuilder(const VertBlockBuilder&) = delete;
   VertBlockBuilder& operator=(const VertBlockBuilder&) = delete;
 
+  virtual ~VertBlockBuilder();
+
   // Reset the contents as if the BlockBuilder was just constructed.
   void Reset();
 
@@ -79,14 +82,16 @@ class VertBlockBuilder {
   bool empty() const;
 
  private:
-  uint32_t num_section_;
   uint32_t section_size_;
 
-  uint32_t block_bytes_;
+  VertBlockMeta meta_;
+  std::vector<VertSection*> section_buffer_;
 
-  std::vector<uint32_t> section_buffer_;
-  std::vector<std::string> key_buffer_;
-  std::string value_buffer_;
+  uint64_t offset_;
+
+  VertSection* current_section_;
+
+  char* internal_buffer_;
 
   void DumpSection();
 };
