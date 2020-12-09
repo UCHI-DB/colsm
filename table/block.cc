@@ -6,9 +6,9 @@
 
 #include "table/block.h"
 
-#include <iostream>
 #include <algorithm>
 #include <cstdint>
+#include <iostream>
 #include <vector>
 
 #include "leveldb/comparator.h"
@@ -168,7 +168,7 @@ class Block::Iter : public Iterator {
   }
 
   void Seek(const Slice& target) override {
-//    std::cout << num_restarts_ << std::endl;
+    //    std::cout << num_restarts_ << std::endl;
     // Binary search in restart array to find the last restart point
     // with a key < target
     uint32_t left = 0;
@@ -198,7 +198,7 @@ class Block::Iter : public Iterator {
       }
     }
 
-//    std::cout << loop << std::endl;
+    //    std::cout << loop << std::endl;
     // Linear search (within restart block) for first key >= target
     SeekToRestartPoint(left);
     while (true) {
@@ -274,6 +274,55 @@ Iterator* Block::NewIterator(const Comparator* comparator) {
   }
 }
 
+int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
+              uint32_t target) {
+  uint32_t mask = (1 << bitwidth) - 1;
+  uint32_t begin = 0;
+  uint32_t end = num_entry - 1;
+  while (begin < end) {
+    auto current = (begin + end + 1) / 2;
+
+    auto bits = current * bitwidth;
+    auto index = bits >> 3;
+    auto offset = bits & 0x7;
+
+    auto extracted = (*(uint32_t*)(data + index) >> offset) & mask;
+
+    if (extracted == target) {
+      return current;
+    }
+    if (extracted > target) {
+      end = current - 1;
+    } else {
+      begin = current + 1;
+    }
+  }
+  return -1;
+}
+
+int section_packed(uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
+               uint32_t target) {
+  uint32_t mask = (1 << bitwidth) - 1;
+  uint32_t begin = 0;
+  uint32_t end = num_entry - 1;
+  while (begin < end) {
+    auto current = (begin + end + 1) / 2;
+
+    auto bits = current * bitwidth;
+    auto index = bits >> 3;
+    auto offset = bits & 0x7;
+
+    auto extracted = (*(uint32_t*)(data + index) >> offset) & mask;
+
+    if (extracted <= target) {
+      begin = current;
+    } else {
+      end = current - 1;
+    }
+  }
+  return begin;
+}
+
 VertBlockMeta::VertBlockMeta()
     : num_section_(0), start_min_(0), start_bitwidth_(0), starts_(NULL) {}
 
@@ -289,11 +338,12 @@ void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
 }
 
 uint64_t VertBlockMeta::Search(int32_t value) {
-//  std::cout << num_section_ << "," << (int32_t)start_bitwidth_ << std::endl;
+  //  std::cout << num_section_ << "," << (int32_t)start_bitwidth_ << std::endl;
   auto target = value - start_min_;
-  sboost::SortedBitpack sbp(start_bitwidth_, target);
-  auto index = sbp.greater(starts_, num_section_);
-  return offsets_[index - 1];
+//  sboost::SortedBitpack sbp(start_bitwidth_, target);
+//  auto index = sbp.greater(starts_, num_section_);
+//  return offsets_[index - 1];
+  return offsets_[section_packed(starts_,num_section_,start_bitwidth_,target)];
 }
 
 uint32_t VertBlockMeta::Read(const char* in) {
@@ -380,8 +430,9 @@ void VertSection::Read(const char* in) {
 }
 
 int32_t VertSection::Find(int32_t target) {
-  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
-  return sbp.equal(keys_data_, num_entry_);
+//  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
+//  return sbp.equal(keys_data_, num_entry_);
+    return eq_packed(keys_data_,num_entry_,bit_width_,target-start_value_);
 }
 
 int32_t VertSection::FindStart(int32_t target) {

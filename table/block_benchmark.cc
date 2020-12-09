@@ -44,6 +44,7 @@ class BlockBenchmark : public benchmark::Fixture {
   IntComparator* comparator_;
 
   Slice key_;
+  char value_[2000];
 
  public:
   // add members as needed
@@ -59,7 +60,6 @@ class BlockBenchmark : public benchmark::Fixture {
       std::sort(buffer.begin(), buffer.end(), binary_sorter);
 
       uint32_t intkey;
-      uint32_t intvalue;
 
       Options option;
       option.comparator = leveldb::BytewiseComparator();
@@ -67,9 +67,8 @@ class BlockBenchmark : public benchmark::Fixture {
 
       for (auto i = 0; i < num_entry_; ++i) {
         intkey = buffer[i];
-        intvalue = i;
         Slice key((const char*)&intkey, 4);
-        Slice value((const char*)&intvalue, 4);
+        Slice value(value_, 2000);
         builder.Add(key, value);
       }
       auto result = builder.Finish();
@@ -81,7 +80,6 @@ class BlockBenchmark : public benchmark::Fixture {
     }
     {
       uint32_t intkey;
-      uint32_t intvalue;
 
       Options option;
       option.comparator = new IntComparator();
@@ -89,9 +87,8 @@ class BlockBenchmark : public benchmark::Fixture {
 
       for (uint32_t i = 0; i < num_entry_; ++i) {
         intkey = i;
-        intvalue = i;
         Slice key((const char*)&intkey, 4);
-        Slice value((const char*)&intvalue, 4);
+        Slice value(value_, );
         builder.Add(key, value);
       }
       auto result = builder.Finish();
@@ -159,15 +156,14 @@ BENCHMARK_F(BlockBenchmark, Normal)(benchmark::State& state) {
 //  }
 //}
 
-// BENCHMARK_F(BlockBenchmark, Vert)(benchmark::State& state) {
-//  auto ite = vblock_->NewIterator(NULL);
-//
-//  for (auto _ : state) {
-//
-//    int a = 39703;
-//    Slice target((const char*)&a,4);
-//    ite->Seek(target);
-//    key_ = ite->key();
-//  }
-//  delete ite;
-//}
+BENCHMARK_F(BlockBenchmark, Vert)(benchmark::State& state) {
+  auto ite = vblock_->NewIterator(NULL);
+
+  for (auto _ : state) {
+    int a = 39703;
+    Slice target((const char*)&a, 4);
+    ite->Seek(target);
+    key_ = ite->key();
+  }
+  delete ite;
+}

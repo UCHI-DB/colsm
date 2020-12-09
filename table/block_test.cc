@@ -79,7 +79,7 @@ TEST(VertBlockMetaTest, Search) {
   *(uint32_t*)pointer = 100;
   pointer += 4;
   for (int i = 0; i < 100; ++i) {
-    *(uint64_t*)pointer = i;
+    *(uint64_t*)pointer = i*50;
     pointer += 8;
   }
   *(int32_t*)pointer = 377;
@@ -97,7 +97,7 @@ TEST(VertBlockMetaTest, Search) {
   VertBlockMeta meta;
   meta.Read(buffer);
 
-  EXPECT_EQ(15, meta.Search(392));  // 15 in entrie
+  EXPECT_EQ(750, meta.Search(392));  // 15 in entrie
 }
 
 TEST(VertSectionTest, Write) {
