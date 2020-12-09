@@ -309,40 +309,32 @@ add_executable(leveldbutil
 )
 target_link_libraries(leveldbutil leveldb)
 
-# Microbenchmarks
-# TODO This need to put to a more organized place
-build_gbenchmark()
-set(LEVELDB_MICROBENCHMARK_LINK_OPTION benchmark::benchmark benchmark::benchmark_main Threads::Threads
-        leveldb)
 
-add_executable(leveldb_block_benchmark table/block_benchmark.cc)
-target_link_libraries(leveldb_block_benchmark PRIVATE ${LEVELDB_MICROBENCHMARK_LINK_OPTION})
-target_compile_options(leveldb_block_benchmark PUBLIC ${SBOOST_SIMD_FLAGS})
-#target_compile_options(leveldb_block_benchmark PUBLIC "-O3")
-
-add_executable(leveldb_block_runner table/block_runner.cc)
-target_link_libraries(leveldb_block_runner PRIVATE leveldb)
-target_compile_options(leveldb_block_runner PUBLIC ${SBOOST_SIMD_FLAGS})
+add_executable(block_runner table/block_runner.cc)
+target_link_libraries(block_runner PRIVATE leveldb)
+target_compile_options(block_runner PUBLIC ${SBOOST_SIMD_FLAGS})
 
 if(LEVELDB_BUILD_TESTS)
   enable_testing()
 
-  # Prevent overriding the parent project's compiler/linker settings on Windows.
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  set(install_gtest OFF)
-  set(install_gmock OFF)
-  set(build_gmock ON)
-
-  # This project is tested using GoogleTest.
-  add_subdirectory("third_party/googletest")
-
-  # GoogleTest triggers a missing field initializers warning.
-  if(LEVELDB_HAVE_NO_MISSING_FIELD_INITIALIZERS)
-    set_property(TARGET gtest
-        APPEND PROPERTY COMPILE_OPTIONS -Wno-missing-field-initializers)
-    set_property(TARGET gmock
-        APPEND PROPERTY COMPILE_OPTIONS -Wno-missing-field-initializers)
-  endif(LEVELDB_HAVE_NO_MISSING_FIELD_INITIALIZERS)
+  # Download and build gtest instead of assuming it is in a sub-folder
+  build_gtest()
+#  # Prevent overriding the parent project's compiler/linker settings on Windows.
+#  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+#  set(install_gtest OFF)
+#  set(install_gmock OFF)
+#  set(build_gmock ON)
+#
+#  # This project is tested using GoogleTest.
+#  add_subdirectory("third_party/googletest")
+#
+#  # GoogleTest triggers a missing field initializers warning.
+#  if(LEVELDB_HAVE_NO_MISSING_FIELD_INITIALIZERS)
+#    set_property(TARGET gtest
+#        APPEND PROPERTY COMPILE_OPTIONS -Wno-missing-field-initializers)
+#    set_property(TARGET gmock
+#        APPEND PROPERTY COMPILE_OPTIONS -Wno-missing-field-initializers)
+#  endif(LEVELDB_HAVE_NO_MISSING_FIELD_INITIALIZERS)
 
   function(leveldb_test test_file)
     get_filename_component(test_target_name "${test_file}" NAME_WE)
@@ -356,7 +348,7 @@ if(LEVELDB_BUILD_TESTS)
 
         "${test_file}"
     )
-    target_link_libraries("${test_target_name}" leveldb gmock gtest)
+    target_link_libraries("${test_target_name}" leveldb GTest::GMock GTest::GTest)
     target_compile_definitions("${test_target_name}"
       PRIVATE
         ${LEVELDB_PLATFORM_NAME}=1
@@ -420,6 +412,17 @@ if(LEVELDB_BUILD_TESTS)
 endif(LEVELDB_BUILD_TESTS)
 
 if(LEVELDB_BUILD_BENCHMARKS)
+
+  # Microbenchmarks
+  build_gbenchmark()
+  set(LEVELDB_MICROBENCHMARK_LINK_OPTION benchmark::benchmark benchmark::benchmark_main Threads::Threads
+          leveldb)
+
+  add_executable(block_benchmark table/block_benchmark.cc)
+  target_link_libraries(block_benchmark PRIVATE ${LEVELDB_MICROBENCHMARK_LINK_OPTION})
+  target_compile_options(block_benchmark PUBLIC ${SBOOST_SIMD_FLAGS})
+  #target_compile_options(leveldb_block_benchmark PUBLIC "-O3")
+
   function(leveldb_benchmark bench_file)
     get_filename_component(bench_target_name "${bench_file}" NAME_WE)
 
@@ -434,7 +437,7 @@ if(LEVELDB_BUILD_BENCHMARKS)
 
         "${bench_file}"
     )
-    target_link_libraries("${bench_target_name}" leveldb gmock gtest)
+    target_link_libraries("${bench_target_name}" leveldb GTest::GTest GTest::GMock)
     target_compile_definitions("${bench_target_name}"
       PRIVATE
         ${LEVELDB_PLATFORM_NAME}=1

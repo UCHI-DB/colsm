@@ -169,10 +169,12 @@ void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
 }
 
 void VertBlockBuilder::DumpSection() {
-  meta_.AddSection(offset_, current_section_->StartValue());
-  offset_ += current_section_->EstimateSize();
-  section_buffer_.push_back(current_section_);
-  current_section_ = NULL;
+  if(current_section_!=NULL) {
+    meta_.AddSection(offset_, current_section_->StartValue());
+    offset_ += current_section_->EstimateSize();
+    section_buffer_.push_back(current_section_);
+    current_section_ = NULL;
+  }
 }
 
 void VertBlockBuilder::Reset() {

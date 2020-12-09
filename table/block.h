@@ -93,8 +93,10 @@ class VertSection {
   uint32_t estimated_size_;
 
   const uint8_t* keys_data_;
+  const uint8_t* values_data_;
 
   std::vector<uint32_t> keys_plain_;
+  std::string values_plain_;
 
   uint32_t BitPackSize() { return (bit_width_ * num_entry_ + 63) >> 6 << 3; }
 
@@ -107,6 +109,7 @@ class VertSection {
   int32_t StartValue() { return start_value_; }
   void StartValue(int32_t sv) { start_value_ = sv; }
   const uint8_t* KeysData() { return keys_data_; }
+  const uint8_t* ValuesData() { return values_data_; }
 
   void Add(int32_t key, const Slice& value);
   uint32_t EstimateSize();

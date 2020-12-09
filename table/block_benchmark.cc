@@ -44,7 +44,8 @@ class BlockBenchmark : public benchmark::Fixture {
   IntComparator* comparator_;
 
   Slice key_;
-  char value_[2000];
+  char vbuffer_[16384];
+  int value_len_ = 16384;
 
  public:
   // add members as needed
@@ -68,7 +69,7 @@ class BlockBenchmark : public benchmark::Fixture {
       for (auto i = 0; i < num_entry_; ++i) {
         intkey = buffer[i];
         Slice key((const char*)&intkey, 4);
-        Slice value(value_, 2000);
+        Slice value(vbuffer_, value_len_);
         builder.Add(key, value);
       }
       auto result = builder.Finish();
@@ -88,7 +89,7 @@ class BlockBenchmark : public benchmark::Fixture {
       for (uint32_t i = 0; i < num_entry_; ++i) {
         intkey = i;
         Slice key((const char*)&intkey, 4);
-        Slice value(value_, );
+        Slice value(vbuffer_, value_len_);
         builder.Add(key, value);
       }
       auto result = builder.Finish();
@@ -102,15 +103,13 @@ class BlockBenchmark : public benchmark::Fixture {
       VertBlockBuilder vbb();
 
       uint32_t intkey;
-      uint32_t intvalue;
       Slice key((const char*)&intkey, 4);
-      Slice value((const char*)&intvalue, 4);
 
       VertBlockBuilder builder(NULL);
 
       for (uint32_t i = 0; i < num_entry_; ++i) {
         intkey = i;
-        intvalue = i;
+        Slice value(vbuffer_, value_len_);
         builder.Add(key, value);
       }
 

@@ -40,6 +40,83 @@ macro(build_sboost)
     set(SBOOST_SIMD_FLAGS -msse4.1 -mavx -mavx2 -mavx512f -mavx512bw -mavx512dq -mavx512vl -mbmi2)
 endmacro()
 
+macro(build_gtest)
+    message(STATUS "Building gtest from source")
+    set(GTEST_BUILD_VERSION 1.10.0)
+    set(GTEST_SOURCE_URL
+            "https://github.com/google/googletest/archive/release-${GTEST_BUILD_VERSION}.tar.gz")
+
+    set(GTEST_VENDORED TRUE)
+    set(GTEST_CMAKE_CXX_FLAGS ${EP_CXX_FLAGS})
+
+    if (UPPERCASE_BUILD_TYPE MATCHES DEBUG)
+        set(CMAKE_GTEST_DEBUG_EXTENSION "d")
+    else ()
+        set(CMAKE_GTEST_DEBUG_EXTENSION "")
+    endif ()
+
+    set(GTEST_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/googletest_ep-prefix/src/googletest_ep")
+
+    set(GTEST_INCLUDE_DIR "${GTEST_PREFIX}/include")
+    set(GMOCK_INCLUDE_DIR "${GTEST_PREFIX}/include")
+    set(GTEST_LIBRARY_DIR ${GTEST_PREFIX}/lib)
+
+    set(_GTEST_RUNTIME_DIR ${BUILD_OUTPUT_ROOT_DIRECTORY})
+
+    set(_GTEST_LIBRARY_SUFFIX "${CMAKE_GTEST_DEBUG_EXTENSION}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+
+
+    set(GTEST_STATIC_LIB
+            "${GTEST_LIBRARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${_GTEST_LIBRARY_SUFFIX}")
+    set(GMOCK_STATIC_LIB
+            "${GTEST_LIBRARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}gmock${_GTEST_LIBRARY_SUFFIX}")
+    set(GTEST_MAIN_STATIC_LIB
+            "${GTEST_LIBRARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${_GTEST_LIBRARY_SUFFIX}")
+    set(GTEST_CMAKE_ARGS
+            ${EP_COMMON_TOOLCHAIN}
+            -DCMAKE_BUILD_TYPE=${UPPERCASE_BUILD_TYPE}
+            "-DCMAKE_INSTALL_PREFIX=${GTEST_PREFIX}"
+            -DBUILD_SHARED_LIBS=OFF
+            -DCMAKE_CXX_FLAGS=${GTEST_CMAKE_CXX_FLAGS}
+            -DCMAKE_CXX_FLAGS_${UPPERCASE_BUILD_TYPE}=${GTEST_CMAKE_CXX_FLAGS})
+
+
+    #list(APPEND GTEST_CMAKE_ARGS "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${_GTEST_RUNTIME_DIR}"
+    #            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_${UPPERCASE_BUILD_TYPE}=${_GTEST_RUNTIME_DIR}")
+
+    #    add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=1)
+
+    externalproject_add(googletest_ep
+            URL ${GTEST_SOURCE_URL}
+            BUILD_BYPRODUCTS ${GTEST_STATIC_LIB} ${GTEST_MAIN_STATIC_LIB}
+            ${GMOCK_STATIC_LIB}
+            CMAKE_ARGS ${GTEST_CMAKE_ARGS} ${EP_LOG_OPTIONS})
+
+    # The include directory must exist before it is referenced by a target.
+    file(MAKE_DIRECTORY "${GTEST_INCLUDE_DIR}")
+
+    add_library(GTest::GTest STATIC IMPORTED)
+
+    set_target_properties(GTest::GTest
+            PROPERTIES IMPORTED_LOCATION "${GTEST_STATIC_LIB}"
+            INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIR}")
+
+    add_library(GTest::Main STATIC IMPORTED)
+    set_target_properties(GTest::Main
+            PROPERTIES IMPORTED_LOCATION "${GTEST_MAIN_STATIC_LIB}"
+            INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIR}")
+
+    add_library(GTest::GMock STATIC IMPORTED)
+    set_target_properties(GTest::GMock
+            PROPERTIES IMPORTED_LOCATION "${GMOCK_STATIC_LIB}"
+            INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIR}")
+    add_dependencies(GTest::GTest googletest_ep)
+    add_dependencies(GTest::Main googletest_ep)
+    add_dependencies(GTest::GMock googletest_ep)
+
+    include_directories(${GTEST_INCLUDE_DIR})
+endmacro()
+
 macro(build_gbenchmark)
     message(STATUS "Building benchmark from source")
     set(GBENCHMARK_BUILD_VERSION 1.5.2)

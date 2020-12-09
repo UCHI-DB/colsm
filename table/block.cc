@@ -279,7 +279,7 @@ int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
   uint32_t mask = (1 << bitwidth) - 1;
   uint32_t begin = 0;
   uint32_t end = num_entry - 1;
-  while (begin < end) {
+  while (begin <= end) {
     auto current = (begin + end + 1) / 2;
 
     auto bits = current * bitwidth;
@@ -301,7 +301,7 @@ int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
 }
 
 int section_packed(uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
-               uint32_t target) {
+                   uint32_t target) {
   uint32_t mask = (1 << bitwidth) - 1;
   uint32_t begin = 0;
   uint32_t end = num_entry - 1;
@@ -340,10 +340,11 @@ void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
 uint64_t VertBlockMeta::Search(int32_t value) {
   //  std::cout << num_section_ << "," << (int32_t)start_bitwidth_ << std::endl;
   auto target = value - start_min_;
-//  sboost::SortedBitpack sbp(start_bitwidth_, target);
-//  auto index = sbp.greater(starts_, num_section_);
-//  return offsets_[index - 1];
-  return offsets_[section_packed(starts_,num_section_,start_bitwidth_,target)];
+  //  sboost::SortedBitpack sbp(start_bitwidth_, target);
+  //  auto index = sbp.greater(starts_, num_section_);
+  //  return offsets_[index - 1];
+  return offsets_[section_packed(starts_, num_section_, start_bitwidth_,
+                                 target)];
 }
 
 uint32_t VertBlockMeta::Read(const char* in) {
@@ -393,7 +394,9 @@ VertSection::~VertSection() {}
 void VertSection::Add(int32_t key, const Slice& value) {
   num_entry_++;
   keys_plain_.push_back(key - start_value_);
-  // TODO Ignore value for now
+  auto size = value.size();
+  values_plain_.append((const char*)&size, 4);
+  values_plain_.append(value.data(), value.size());
 }
 
 uint32_t VertSection::EstimateSize() {
@@ -402,7 +405,7 @@ uint32_t VertSection::EstimateSize() {
   }
   num_entry_ = keys_plain_.size();
   bit_width_ = 32 - _lzcnt_u32(keys_plain_[num_entry_ - 1]);
-  estimated_size_ = 9 + BitPackSize();
+  estimated_size_ = 9 + BitPackSize() + values_plain_.size();
   return estimated_size_;
 }
 
@@ -415,6 +418,8 @@ void VertSection::Write(char* out) {
   *reinterpret_cast<uint8_t*>(pointer++) = bit_width_;
   sboost::byteutils::bitpack(keys_plain_.data(), keys_plain_.size(), bit_width_,
                              (uint8_t*)pointer);
+  pointer += BitPackSize();
+  memcpy(pointer, values_plain_.data(), values_plain_.size());
 }
 
 void VertSection::Read(const char* in) {
@@ -425,14 +430,17 @@ void VertSection::Read(const char* in) {
   pointer += 4;
   bit_width_ = *reinterpret_cast<const uint8_t*>(pointer++);
   keys_data_ = reinterpret_cast<const uint8_t*>(pointer);
+  pointer += BitPackSize();
+  values_data_ = reinterpret_cast<const uint8_t*>(pointer);
   // Recompute estimated size
+  // TODO Temporarily ignoring value size here as we do not store it
   estimated_size_ = 9 + BitPackSize();
 }
 
 int32_t VertSection::Find(int32_t target) {
-//  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
-//  return sbp.equal(keys_data_, num_entry_);
-    return eq_packed(keys_data_,num_entry_,bit_width_,target-start_value_);
+  //  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
+  //  return sbp.equal(keys_data_, num_entry_);
+  return eq_packed(keys_data_, num_entry_, bit_width_, target - start_value_);
 }
 
 int32_t VertSection::FindStart(int32_t target) {
@@ -461,6 +469,7 @@ class VertBlock::VIter : public Iterator {
 
   int intkey_;
   Slice key_;
+  Slice value_;
 
   Status status_;
 
@@ -495,6 +504,13 @@ class VertBlock::VIter : public Iterator {
       auto entry =
           (unpacked[group_offset / 2] >> (32 * (group_offset & 1))) & -1;
       intkey_ = entry + section.StartValue();
+
+      // Sequential look up value
+      const char* value_pointer = (const char*)section.ValuesData();
+      for (auto i = 0; i < index; ++i) {
+        value_pointer += 4 + *(const uint32_t*)value_pointer;
+      }
+      value_ = Slice(value_pointer + 4, *(const uint32_t*)value_pointer);
     }
   }
 
@@ -510,7 +526,7 @@ class VertBlock::VIter : public Iterator {
 
   Slice key() const override { return key_; }
 
-  Slice value() const override {}
+  Slice value() const override { return value_; }
 
   Status status() const override {}
 };

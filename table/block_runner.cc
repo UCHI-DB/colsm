@@ -21,7 +21,7 @@ void runVert() {
 
   VertBlockBuilder builder(NULL);
 
-  for (uint32_t i = 0; i < 100000; ++i) {
+  for (uint32_t i = 0; i < 1000000; ++i) {
     intkey = i;
     intvalue = i;
     builder.Add(key, value);

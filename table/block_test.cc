@@ -102,13 +102,15 @@ TEST(VertBlockMetaTest, Search) {
 
 TEST(VertSectionTest, Write) {
   VertSection section;
-  Slice value;  // Dummy
+  char v[4];
+  Slice value(v,4);  // Dummy
   section.StartValue(3);
   for (auto i = 0; i < 100; ++i) {
     section.Add(i * 2 + 3, value);
   }
   auto size = section.EstimateSize();
-  EXPECT_EQ(113, size);
+  // 113 data, 800 value
+  EXPECT_EQ(913, size);
   EXPECT_EQ(100,section.NumEntry());
   char buffer[size];
   memset(buffer, 0, size);
