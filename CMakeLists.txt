@@ -175,6 +175,10 @@ target_sources(leveldb
     "table/block_builder.h"
     "table/block.cc"
     "table/block.h"
+    "table/vert_block.cc"
+    "table/vert_block.h"
+    "table/vert_block_builder.cc"
+    "table/vert_block_builder.h"
     "table/filter_block.cc"
     "table/filter_block.h"
     "table/format.cc"
@@ -391,7 +395,7 @@ if(LEVELDB_BUILD_TESTS)
 
     leveldb_test("table/filter_block_test.cc")
     leveldb_test("table/table_test.cc")
-    leveldb_test("table/block_test.cc")
+    leveldb_test("table/vert_block_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")

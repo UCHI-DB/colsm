@@ -7,9 +7,12 @@
 
 #include "block.h"
 #include "block_builder.h"
+#include "vert_block.h"
+#include "vert_block_builder.h"
 #include "format.h"
 
 using namespace leveldb;
+using namespace leveldb::vert;
 
 void runVert() {
   VertBlockBuilder vbb();

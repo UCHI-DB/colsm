@@ -7,8 +7,11 @@
 #include <gtest/gtest.h>
 
 #include "byteutils.h"
+#include "vert_block.h"
+#include "vert_block_builder.h"
 
 using namespace leveldb;
+using namespace leveldb::vert;
 
 TEST(VertBlockMetaTest, Read) {
   char buffer[897];

@@ -9,8 +9,11 @@
 #include "block.h"
 #include "block_builder.h"
 #include "format.h"
+#include "vert_block.h"
+#include "vert_block_builder.h"
 
 using namespace leveldb;
+using namespace leveldb::vert;
 
 class IntComparator : public Comparator {
  public:
