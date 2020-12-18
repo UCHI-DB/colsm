@@ -55,7 +55,7 @@ VertBlockBuilder::~VertBlockBuilder() {
 void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
   int32_t intkey = *reinterpret_cast<const int32_t*>(key.data());
   if (current_section_ == NULL) {
-    current_section_ = new VertSection();
+    current_section_ = new VertSection(Encodings::PLAIN);
     current_section_->StartValue(intkey);
   }
   current_section_->Add(intkey, value);

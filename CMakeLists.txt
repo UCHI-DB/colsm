@@ -179,6 +179,8 @@ target_sources(leveldb
     "table/vert_block.h"
     "table/vert_block_builder.cc"
     "table/vert_block_builder.h"
+    "table/vert_coder.cc"
+    "table/vert_coder.h"
     "table/filter_block.cc"
     "table/filter_block.h"
     "table/format.cc"
