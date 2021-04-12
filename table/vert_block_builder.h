@@ -11,55 +11,56 @@
 #include <vector>
 
 namespace leveldb {
-namespace vert {
+    namespace vert {
 
 /**
  * Builder for building vertical blocks
  */
-class VertBlockBuilder {
- public:
-  explicit VertBlockBuilder(const Options* options);
+        class VertBlockBuilder {
+        public:
+            explicit VertBlockBuilder(const Options *options);
 
-  VertBlockBuilder(const VertBlockBuilder&) = delete;
-  VertBlockBuilder& operator=(const VertBlockBuilder&) = delete;
+            VertBlockBuilder(const VertBlockBuilder &) = delete;
 
-  virtual ~VertBlockBuilder();
+            VertBlockBuilder &operator=(const VertBlockBuilder &) = delete;
 
-  // Reset the contents as if the BlockBuilder was just constructed.
-  void Reset();
+            virtual ~VertBlockBuilder();
 
-  // REQUIRES: Finish() has not been called since the last call to Reset().
-  // REQUIRES: key is larger than any previously added key
-  void Add(const Slice& key, const Slice& value);
+            // Reset the contents as if the BlockBuilder was just constructed.
+            void Reset();
 
-  // Finish building the block and return a slice that refers to the
-  // block contents.  The returned slice will remain valid for the
-  // lifetime of this builder or until Reset() is called.
-  Slice Finish();
+            // REQUIRES: Finish() has not been called since the last call to Reset().
+            // REQUIRES: key is larger than any previously added key
+            void Add(const Slice &key, const Slice &value);
 
-  // Returns an estimate of the current (uncompressed) size of the block
-  // we are building.
-  size_t CurrentSizeEstimate() const;
+            // Finish building the block and return a slice that refers to the
+            // block contents.  The returned slice will remain valid for the
+            // lifetime of this builder or until Reset() is called.
+            Slice Finish();
 
-  // Return true iff no entries have been added since the last Reset()
-  bool empty() const;
+            // Returns an estimate of the current (uncompressed) size of the block
+            // we are building.
+            size_t CurrentSizeEstimate() const;
 
- private:
-  uint32_t section_size_;
+            // Return true iff no entries have been added since the last Reset()
+            bool empty() const;
 
-  VertBlockMeta meta_;
-  std::vector<VertSection*> section_buffer_;
+        private:
+            uint32_t section_size_;
 
-  uint64_t offset_;
+            VertBlockMeta meta_;
+            std::vector<VertSection *> section_buffer_;
 
-  VertSection* current_section_;
+            uint64_t offset_;
 
-  char* internal_buffer_;
+            VertSection *current_section_;
 
-  void DumpSection();
-};
+            char *internal_buffer_;
+
+            void DumpSection();
+        };
 
 
-}
+    }
 }
 #endif  // LEVELDB_BLOCK_VERT_BUILDER_H

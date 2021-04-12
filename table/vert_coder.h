@@ -9,42 +9,42 @@
 #include "leveldb/slice.h"
 
 namespace leveldb {
-namespace vert {
+    namespace vert {
 
-class Encoder {
-public:
-    virtual void Encode(const Slice &) = 0;
+        class Encoder {
+        public:
+            virtual void Encode(const Slice &) = 0;
 
-    virtual uint32_t EstimateSize() = 0;
+            virtual uint32_t EstimateSize() = 0;
 
-    virtual void Finish(uint8_t *) = 0;
-};
+            virtual void Finish(uint8_t *) = 0;
+        };
 
-class Decoder {
-public:
-    virtual void Attach(const uint8_t *) = 0;
+        class Decoder {
+        public:
+            virtual void Attach(const uint8_t *) = 0;
 
-    virtual void Move(uint32_t offset) = 0;
+            virtual void Move(uint32_t offset) = 0;
 
-    virtual Slice Decode() = 0;
-};
+            virtual Slice Decode() = 0;
+        };
 
-class Encoding {
-public:
-    Encoder *encoder();
+        class Encoding {
+        public:
+            virtual Encoder *encoder() = 0;
 
-    Decoder *decoder();
-};
+            virtual Decoder *decoder() = 0;
+        };
 
-enum Encodings {
-    PLAIN, BITPACK
-};
+        enum Encodings {
+            PLAIN, BITPACK
+        };
 
-class EncodingFactory {
-public:
-    static Encoding &Get(Encodings);
-};
-}
+        class EncodingFactory {
+        public:
+            static Encoding &Get(Encodings);
+        };
+    }
 }
 
 

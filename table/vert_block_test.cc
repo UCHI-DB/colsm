@@ -104,7 +104,7 @@ TEST(VertBlockMetaTest, Search) {
 }
 
 TEST(VertSectionTest, Write) {
-  VertSection section;
+  VertSection section(Encodings::PLAIN);
   char v[4];
   Slice value(v,4);  // Dummy
   section.StartValue(3);
@@ -112,13 +112,13 @@ TEST(VertSectionTest, Write) {
     section.Add(i * 2 + 3, value);
   }
   auto size = section.EstimateSize();
-  // 113 data, 800 value
-  EXPECT_EQ(913, size);
+  // 114 data, 800 value
+  EXPECT_EQ(914, size);
   EXPECT_EQ(100,section.NumEntry());
   char buffer[size];
   memset(buffer, 0, size);
 
-  section.Write(buffer);
+  section.Dump(buffer);
 
   auto pointer = buffer;
   EXPECT_EQ(100, *(uint32_t*)pointer);
