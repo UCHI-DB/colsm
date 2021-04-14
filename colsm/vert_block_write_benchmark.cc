@@ -6,9 +6,9 @@
 
 #include "leveldb/comparator.h"
 
-#include "block.h"
-#include "block_builder.h"
-#include "format.h"
+#include "table/block.h"
+#include "table/block_builder.h"
+#include "table/format.h"
 #include "vert_block.h"
 #include "vert_block_builder.h"
 
@@ -36,7 +36,7 @@ class IntComparator : public Comparator {
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-class BlockBenchmark : public benchmark::Fixture {
+class BlockWriteBenchmark : public benchmark::Fixture {
  protected:
   uint32_t num_entry_ = 1000000;
 
@@ -53,7 +53,7 @@ class BlockBenchmark : public benchmark::Fixture {
  public:
   // add members as needed
 
-  BlockBenchmark() {
+  BlockWriteBenchmark() {
     comparator_ = new IntComparator();
     num_entry_ = 1000000;
     {
@@ -123,7 +123,7 @@ class BlockBenchmark : public benchmark::Fixture {
     }
   }
 
-  virtual ~BlockBenchmark() {
+  virtual ~BlockWriteBenchmark() {
     delete block_;
     delete blockWithInt_;
     delete vblock_;
@@ -131,7 +131,7 @@ class BlockBenchmark : public benchmark::Fixture {
   }
 };
 
-BENCHMARK_F(BlockBenchmark, Normal)(benchmark::State& state) {
+BENCHMARK_F(BlockWriteBenchmark, Normal)(benchmark::State& state) {
   for (auto _ : state) {
     //    for (int i = 0; i < 10; ++i) {
     auto ite = block_->NewIterator(leveldb::BytewiseComparator());
@@ -158,7 +158,7 @@ BENCHMARK_F(BlockBenchmark, Normal)(benchmark::State& state) {
 //  }
 //}
 
-BENCHMARK_F(BlockBenchmark, Vert)(benchmark::State& state) {
+BENCHMARK_F(BlockWriteBenchmark, Vert)(benchmark::State& state) {
   auto ite = vblock_->NewIterator(NULL);
 
   for (auto _ : state) {

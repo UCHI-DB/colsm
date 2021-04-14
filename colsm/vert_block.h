@@ -12,7 +12,7 @@
 #include "leveldb/iterator.h"
 #include "leveldb/slice.h"
 
-#include "format.h"
+#include "table/format.h"
 #include "vert_coder.h"
 
 namespace leveldb {

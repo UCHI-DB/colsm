@@ -2,7 +2,7 @@
 // Created by harper on 12/5/20.
 //
 
-#include "block.h"
+#include "table/block.h"
 
 #include <gtest/gtest.h>
 

@@ -175,12 +175,6 @@ target_sources(leveldb
     "table/block_builder.h"
     "table/block.cc"
     "table/block.h"
-    "table/vert_coder.cc"
-    "table/vert_coder.h"
-    "table/vert_block.cc"
-    "table/vert_block.h"
-    "table/vert_block_builder.cc"
-    "table/vert_block_builder.h"
     "table/filter_block.cc"
     "table/filter_block.h"
     "table/format.cc"
@@ -193,6 +187,14 @@ target_sources(leveldb
     "table/table.cc"
     "table/two_level_iterator.cc"
     "table/two_level_iterator.h"
+    "colsm/vert_coder.cc"
+    "colsm/vert_coder.h"
+    "colsm/vert_block.cc"
+    "colsm/vert_block.h"
+    "colsm/vert_block_builder.cc"
+    "colsm/vert_block_builder.h"
+    "colsm/two_merge_iterator.cc"
+    "colsm/two_merge_iterator.h"
     "util/arena.cc"
     "util/arena.h"
     "util/bloom.cc"
@@ -397,7 +399,7 @@ if(LEVELDB_BUILD_TESTS)
 
     leveldb_test("table/filter_block_test.cc")
     leveldb_test("table/table_test.cc")
-    leveldb_test("table/vert_block_test.cc")
+    leveldb_test("colsm/vert_block_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")
@@ -421,13 +423,20 @@ if(LEVELDB_BUILD_BENCHMARKS)
 
   # Microbenchmarks
   build_gbenchmark()
+
   set(LEVELDB_MICROBENCHMARK_LINK_OPTION benchmark::benchmark benchmark::benchmark_main Threads::Threads
           leveldb)
 
-  add_executable(block_benchmark table/block_benchmark.cc)
-  target_link_libraries(block_benchmark PRIVATE ${LEVELDB_MICROBENCHMARK_LINK_OPTION})
-  target_compile_options(block_benchmark PUBLIC ${SBOOST_SIMD_FLAGS})
-  #target_compile_options(leveldb_block_benchmark PUBLIC "-O3")
+  # CoLSM Block Benchmark is different from LevelDB own benchmark
+  function(colsm_benchmark colsm_benchmark_name colsm_benchmark_file)
+    add_executable("${colsm_benchmark_name}" "${colsm_benchmark_file}")
+    target_link_libraries(${colsm_benchmark_name} PRIVATE ${LEVELDB_MICROBENCHMARK_LINK_OPTION})
+    target_compile_options(${colsm_benchmark_name} PUBLIC ${SBOOST_SIMD_FLAGS})
+    #target_compile_options(leveldb_block_benchmark PUBLIC "-O3")
+  endfunction(colsm_benchmark)
+
+  colsm_benchmark(vert_block_read_benchmark colsm/vert_block_read_benchmark.cc)
+
 
   function(leveldb_benchmark bench_file)
     get_filename_component(bench_target_name "${bench_file}" NAME_WE)

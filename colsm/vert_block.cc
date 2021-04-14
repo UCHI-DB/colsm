@@ -123,8 +123,8 @@ namespace leveldb {
         VertSection::VertSection() : num_entry_(0), estimated_size_(0), reading_(true) {
         }
 
-        VertSection::VertSection(const Encodings& enc):VertSection() {
-            reading_= false;
+        VertSection::VertSection(const Encodings &enc) : VertSection() {
+            reading_ = false;
             value_encoding_ = &EncodingFactory::Get(enc);
             value_encoder_ = value_encoding_->encoder();
         }
@@ -217,6 +217,13 @@ namespace leveldb {
             VertBlockMeta meta_;
             const char *data_pointer_;
 
+            uint32_t section_index_ = -1;
+            VertSection section_;
+            uint32_t entry_index_ = 0;
+            __m256i unpacked_;
+            uint32_t group_index_ = 0;
+            uint32_t group_offset_ = 0;
+
             sboost::Unpacker *unpacker_;
 
             int intkey_;
@@ -230,53 +237,76 @@ namespace leveldb {
                     : comparator_(comparator), key_((const char *) &intkey_, 4) {
                 meta_.Read(data);
                 data_pointer_ = data + meta_.EstimateSize();
+
+                section_index_ = 0;
+                section_.Read(data_pointer_ + section_index_);
             }
 
             void Seek(const Slice &target) override {
                 // Scan through blocks
                 int32_t target_key = *reinterpret_cast<const int32_t *>(target.data());
-                auto section_offset = meta_.Search(target_key);
 
-                VertSection section;
-                section.Read(data_pointer_ + section_offset);
+                auto new_section_index = meta_.Search(target_key);
+                if (new_section_index != section_index_) {
+                    section_index_ = new_section_index;
+                    section_.Read(data_pointer_ + section_index_);
+                }
 
-                auto index = section.Find(target_key);
-                if (index == -1) {
+                entry_index_ = section_.Find(target_key);
+                if (entry_index_ == -1) {
                     // Not found
                     status_ = Status::NotFound(target);
                 } else {
                     // Seek to the position, extract the keys and values
                     // TODO Switch to a reader and maintain current unpacking location
                     // Unpack 8 entries at a time, read bit_width_ bytes at a time
-                    unpacker_ = sboost::unpackers[section.BitWidth()];
-                    auto group_index = index >> 3;
-                    auto group_offset = index & 0x7;
-                    auto group_start = section.KeysData() + group_index * section.BitWidth();
-                    auto unpacked = unpacker_->unpack(group_start);
+                    unpacker_ = sboost::unpackers[section_.BitWidth()];
+                    group_index_ = entry_index_ >> 3;
+                    group_offset_ = entry_index_ & 0x7;
+                    auto group_start = section_.KeysData() + group_index_ * section_.BitWidth();
+                    unpacked_ = unpacker_->unpack(group_start);
                     auto entry =
-                            (unpacked[group_offset / 2] >> (32 * (group_offset & 1))) & -1;
-                    intkey_ = entry + section.StartValue();
+                            (unpacked_[group_offset_ / 2] >> (32 * (group_offset_ & 1))) & -1;
+                    intkey_ = entry + section_.StartValue();
 
-                    // Sequential look up value
-                    value_ = section.ValueDecoder()->Decode();
+                    // Sequential skip to value
+                    auto decoder = section_.ValueDecoder();
+                    decoder->Skip(entry_index_);
+                    value_ = decoder->Decode();
                 }
             }
 
-            void SeekToFirst() override {}
+            void SeekToFirst() override {
+                // Not supported
+            }
 
-            void SeekToLast() override {}
+            void SeekToLast() override {
+                // Not supported
+            }
 
-            void Next() override {}
+            void Next() override {
+                // TODO
 
-            void Prev() override {}
 
-            bool Valid() const override { return true; }
+
+                auto decoder = section_.ValueDecoder();
+                value_ = decoder->Decode();
+            }
+
+            void Prev() override {
+                // Not supported
+            }
+
+            bool Valid() const override {
+                // TODO
+                return true;
+            }
 
             Slice key() const override { return key_; }
 
             Slice value() const override { return value_; }
 
-            Status status() const override {}
+            Status status() const override { return status_; }
         };
 
         Iterator *VertBlock::NewIterator(const Comparator *comparator) {

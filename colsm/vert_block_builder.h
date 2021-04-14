@@ -6,7 +6,7 @@
 #define LEVELDB_BLOCK_VERT_BUILDER_H
 
 #include <cstdint>
-#include "format.h"
+#include "table/format.h"
 #include "vert_block.h"
 #include <vector>
 

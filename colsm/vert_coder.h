@@ -11,6 +11,10 @@
 namespace leveldb {
     namespace vert {
 
+        namespace encoding {
+
+        }
+
         class Encoder {
         public:
             virtual void Encode(const Slice &) = 0;
@@ -24,7 +28,8 @@ namespace leveldb {
         public:
             virtual void Attach(const uint8_t *) = 0;
 
-            virtual void Move(uint32_t offset) = 0;
+            // Move forward by records
+            virtual void Skip(uint32_t offset) = 0;
 
             virtual Slice Decode() = 0;
         };
@@ -37,7 +42,11 @@ namespace leveldb {
         };
 
         enum Encodings {
-            PLAIN, BITPACK
+            // Store data in <length, value> pair
+            PLAIN,
+            // Store data in <offset...> <value...>
+            LENGTH,
+            BITPACK
         };
 
         class EncodingFactory {
