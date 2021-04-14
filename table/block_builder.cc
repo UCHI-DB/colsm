@@ -39,7 +39,6 @@
 
 #include "block.h"
 #include "byteutils.h"
-#include "vert_block.h"
 
 namespace leveldb {
 

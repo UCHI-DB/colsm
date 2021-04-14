@@ -18,6 +18,8 @@ namespace leveldb {
  */
         class VertBlockBuilder {
         public:
+            Encodings encoding_ = Encodings::PLAIN;
+
             explicit VertBlockBuilder(const Options *options);
 
             VertBlockBuilder(const VertBlockBuilder &) = delete;
@@ -50,6 +52,8 @@ namespace leveldb {
 
             VertBlockMeta meta_;
             std::vector<VertSection *> section_buffer_;
+
+
 
             uint64_t offset_;
 

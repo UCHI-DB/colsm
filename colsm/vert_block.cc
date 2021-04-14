@@ -3,10 +3,12 @@
 //
 
 #include "vert_block.h"
+
 #include <immintrin.h>
+
+#include "byteutils.h"
 #include "sboost.h"
 #include "unpacker.h"
-#include "byteutils.h"
 
 namespace leveldb {
     namespace vert {
@@ -120,8 +122,8 @@ namespace leveldb {
             //  memcpy(pointer, starts_, (start_bitwidth_ * num_section_ + 7) >> 3);
         }
 
-        VertSection::VertSection() : num_entry_(0), estimated_size_(0), reading_(true) {
-        }
+        VertSection::VertSection()
+                : num_entry_(0), estimated_size_(0), reading_(true) {}
 
         VertSection::VertSection(const Encodings &enc) : VertSection() {
             reading_ = false;
@@ -130,8 +132,7 @@ namespace leveldb {
         }
 
         VertSection::~VertSection() {
-            if (reading_)
-                delete value_decoder_;
+            if (reading_) delete value_decoder_;
         }
 
         void VertSection::Add(int32_t key, const Slice &value) {
@@ -221,8 +222,8 @@ namespace leveldb {
             VertSection section_;
             uint32_t entry_index_ = 0;
             __m256i unpacked_;
-            uint32_t group_index_ = 0;
-            uint32_t group_offset_ = 0;
+            uint32_t group_index_ = -1;
+            uint32_t group_offset_ = 8;
 
             sboost::Unpacker *unpacker_;
 
@@ -232,14 +233,33 @@ namespace leveldb {
 
             Status status_;
 
+            void ReadSection(int sec_index) {
+                section_index_ = sec_index;
+                section_.Read(data_pointer_ + section_index_);
+                entry_index_ = 0;
+                group_index_ = -1;
+                group_offset_ = 8;
+            }
+
+            void LoadGroup() {
+                unpacker_ = sboost::unpackers[section_.BitWidth()];
+                auto group_start =
+                        section_.KeysData() + group_index_ * section_.BitWidth();
+                unpacked_ = unpacker_->unpack(group_start);
+            }
+
+            void LoadEntry() {
+                auto entry =
+                        (unpacked_[group_offset_ / 2] >> (32 * (group_offset_ & 1))) & -1;
+                intkey_ = entry + section_.StartValue();
+            }
         public:
             VIter(const Comparator *comparator, const char *data)
                     : comparator_(comparator), key_((const char *) &intkey_, 4) {
                 meta_.Read(data);
                 data_pointer_ = data + meta_.EstimateSize();
 
-                section_index_ = 0;
-                section_.Read(data_pointer_ + section_index_);
+                ReadSection(0);
             }
 
             void Seek(const Slice &target) override {
@@ -248,8 +268,7 @@ namespace leveldb {
 
                 auto new_section_index = meta_.Search(target_key);
                 if (new_section_index != section_index_) {
-                    section_index_ = new_section_index;
-                    section_.Read(data_pointer_ + section_index_);
+                    ReadSection(new_section_index);
                 }
 
                 entry_index_ = section_.Find(target_key);
@@ -260,15 +279,10 @@ namespace leveldb {
                     // Seek to the position, extract the keys and values
                     // TODO Switch to a reader and maintain current unpacking location
                     // Unpack 8 entries at a time, read bit_width_ bytes at a time
-                    unpacker_ = sboost::unpackers[section_.BitWidth()];
                     group_index_ = entry_index_ >> 3;
                     group_offset_ = entry_index_ & 0x7;
-                    auto group_start = section_.KeysData() + group_index_ * section_.BitWidth();
-                    unpacked_ = unpacker_->unpack(group_start);
-                    auto entry =
-                            (unpacked_[group_offset_ / 2] >> (32 * (group_offset_ & 1))) & -1;
-                    intkey_ = entry + section_.StartValue();
-
+                    LoadGroup();
+                    LoadEntry();
                     // Sequential skip to value
                     auto decoder = section_.ValueDecoder();
                     decoder->Skip(entry_index_);
@@ -285,9 +299,18 @@ namespace leveldb {
             }
 
             void Next() override {
-                // TODO
-
-
+                if(entry_index_ >= section_.NumEntry()) {
+                    ReadSection(section_index_+1);
+                    entry_index_++;
+                }
+                if(group_offset_ >=8) {
+                    group_index_++;
+                    group_offset_ = 0;
+                    LoadGroup();
+                } else {
+                    group_offset_++;
+                }
+                LoadEntry();
 
                 auto decoder = section_.ValueDecoder();
                 value_ = decoder->Decode();
@@ -313,5 +336,5 @@ namespace leveldb {
             return new VIter(comparator, data_);
         }
 
-    }
-}
+    }  // namespace vert
+}  // namespace leveldb
