@@ -67,6 +67,10 @@ namespace leveldb {
 
         VertBlockMeta::~VertBlockMeta() {}
 
+        uint32_t VertBlockMeta::SectionOffset(uint32_t sec_index) {
+            return offsets_[sec_index];
+        }
+
         void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
             num_section_++;
             if (starts_plain_.empty()) {
@@ -127,6 +131,7 @@ namespace leveldb {
 
         VertSection::VertSection(const Encodings &enc) : VertSection() {
             reading_ = false;
+            encoding_enum_ = enc;
             value_encoding_ = &EncodingFactory::Get(enc);
             value_encoder_ = value_encoding_->encoder();
         }
@@ -152,6 +157,10 @@ namespace leveldb {
             return estimated_size_;
         }
 
+        void VertSection::Close() {
+            value_encoder_->Close();
+        }
+
         void VertSection::Dump(char *out) {
             auto pointer = out;
             *reinterpret_cast<uint32_t *>(pointer) = num_entry_;
@@ -164,8 +173,9 @@ namespace leveldb {
             pointer += BitPackSize();
 
             keys_plain_.clear();
-            // Write value encoding
-            value_encoder_->Finish(reinterpret_cast<uint8_t *>(pointer));
+            // Write encoding type
+            *(pointer++) = encoding_enum_;
+            value_encoder_->Dump(reinterpret_cast<uint8_t *>(pointer));
             delete value_encoder_;
         }
 
@@ -202,26 +212,29 @@ namespace leveldb {
         }
 
         VertBlock::VertBlock(const BlockContents &data)
-                : data_(data.data.data()),
+                : raw_data_(data.data.data()),
                   size_(data.data.size()),
-                  owned_(data.heap_allocated) {}
+                  owned_(data.heap_allocated) {
+            meta_.Read(raw_data_);
+            content_data_ = raw_data_ + meta_.EstimateSize();
+        }
 
         VertBlock::~VertBlock() {
             if (owned_) {
-                delete[] data_;
+                delete[] raw_data_;
             }
         }
 
         class VertBlock::VIter : public Iterator {
         private:
             const Comparator *const comparator_;
-            VertBlockMeta meta_;
+            VertBlockMeta &meta_;
             const char *data_pointer_;
 
             uint32_t section_index_ = -1;
             VertSection section_;
             uint32_t entry_index_ = 0;
-            __m256i unpacked_;
+            int64_t unpacked_[4];
             uint32_t group_index_ = -1;
             uint32_t group_offset_ = 8;
 
@@ -235,7 +248,7 @@ namespace leveldb {
 
             void ReadSection(int sec_index) {
                 section_index_ = sec_index;
-                section_.Read(data_pointer_ + section_index_);
+                section_.Read(data_pointer_ + meta_.SectionOffset(section_index_));
                 entry_index_ = 0;
                 group_index_ = -1;
                 group_offset_ = 8;
@@ -245,20 +258,22 @@ namespace leveldb {
                 unpacker_ = sboost::unpackers[section_.BitWidth()];
                 auto group_start =
                         section_.KeysData() + group_index_ * section_.BitWidth();
-                unpacked_ = unpacker_->unpack(group_start);
+                auto unpacked = unpacker_->unpack(group_start);
+                unpacked_[0] = unpacked[0];
+                unpacked_[1] = unpacked[1];
+                unpacked_[2] = unpacked[2];
+                unpacked_[3] = unpacked[3];
             }
 
             void LoadEntry() {
                 auto entry =
-                        (unpacked_[group_offset_ / 2] >> (32 * (group_offset_ & 1))) & -1;
+                        (unpacked_[group_offset_ / 2] >> (32 * (group_offset_ & 1))) & (uint32_t) -1;
                 intkey_ = entry + section_.StartValue();
             }
-        public:
-            VIter(const Comparator *comparator, const char *data)
-                    : comparator_(comparator), key_((const char *) &intkey_, 4) {
-                meta_.Read(data);
-                data_pointer_ = data + meta_.EstimateSize();
 
+        public:
+            VIter(const Comparator *comparator, VertBlockMeta &meta, const char *data)
+                    : comparator_(comparator), key_((const char *) &intkey_, 4), meta_(meta), data_pointer_(data) {
                 ReadSection(0);
             }
 
@@ -299,18 +314,21 @@ namespace leveldb {
             }
 
             void Next() override {
-                if(entry_index_ >= section_.NumEntry()) {
-                    ReadSection(section_index_+1);
-                    entry_index_++;
+                if (entry_index_ >= section_.NumEntry()) {
+                    ReadSection(section_index_ + 1);
+                    entry_index_ = 0;
+                    group_index_ = -1;
+                    group_offset_ = 8;
                 }
-                if(group_offset_ >=8) {
+                entry_index_++;
+
+                if (group_offset_ >= 8) {
                     group_index_++;
                     group_offset_ = 0;
                     LoadGroup();
-                } else {
-                    group_offset_++;
                 }
                 LoadEntry();
+                group_offset_++;
 
                 auto decoder = section_.ValueDecoder();
                 value_ = decoder->Decode();
@@ -321,8 +339,7 @@ namespace leveldb {
             }
 
             bool Valid() const override {
-                // TODO
-                return true;
+                return entry_index_ < section_.NumEntry() || section_index_ < meta_.NumSection() - 1;
             }
 
             Slice key() const override { return key_; }
@@ -333,7 +350,7 @@ namespace leveldb {
         };
 
         Iterator *VertBlock::NewIterator(const Comparator *comparator) {
-            return new VIter(comparator, data_);
+            return new VIter(comparator, meta_, content_data_);
         }
 
     }  // namespace vert

@@ -69,7 +69,7 @@ TEST(VertBlockMetaTest, Write) {
     sboost::byteutils::bitpack(plain, 100, 7, pack_buffer);
 
     for (auto i = 0; i < 88; ++i) {
-        EXPECT_EQ(pack_buffer[i], (uint8_t) * (pointer++)) << i;
+        EXPECT_EQ(pack_buffer[i], (uint8_t) *(pointer++)) << i;
     }
 }
 
@@ -139,7 +139,7 @@ TEST(VertSectionTest, Write) {
     sboost::byteutils::bitpack(plain_buffer, 100, 8, packed_buffer);
 
     for (auto i = 0; i < 104; ++i) {
-        EXPECT_EQ(packed_buffer[i], (uint8_t)(*pointer++));
+        EXPECT_EQ(packed_buffer[i], (uint8_t) (*pointer++));
     }
 }
 
@@ -222,6 +222,18 @@ TEST(VertSectionTest, FindStart) {
     EXPECT_EQ(48, section.FindStart(329));
 }
 
+class VertBlockMetaForTest : public VertBlockMeta {
+
+public:
+    VertBlockMetaForTest() : VertBlockMeta() {}
+
+    std::vector<uint64_t> &Offset() { return offsets_; }
+
+    uint8_t StartBitWidth() { return start_bitwidth_; }
+
+    uint8_t *Starts() { return starts_; }
+};
+
 TEST(VertBlockTest, Build) {
     Options option;
     VertBlockBuilder builder(&option);
@@ -234,10 +246,29 @@ TEST(VertBlockTest, Build) {
         builder.Add(key, key);
     }
     auto result = builder.Finish();
-    // section_size = 128, 9 sections
+    // section_size = 128, 8 sections
     // meta = 9 + 9 * 8 + 4 * 9/8 = 86
     // section =
     EXPECT_EQ(9049, result.size());
+
+    auto data = result.data();
+
+    VertBlockMetaForTest meta;
+    meta.Read(data);
+    EXPECT_EQ(8, meta.NumSection());
+    auto &offset = meta.Offset();
+    EXPECT_EQ(8, offset.size());
+    EXPECT_EQ(0, offset[0]);
+    EXPECT_EQ(1154, offset[1]);
+    EXPECT_EQ(1154*2, offset[2]);
+    EXPECT_EQ(1154*3, offset[3]);
+    EXPECT_EQ(1154*4, offset[4]);
+    EXPECT_EQ(1154*5, offset[5]);
+    EXPECT_EQ(1154*6, offset[6]);
+    EXPECT_EQ(1154*7, offset[7]);
+
+    EXPECT_EQ(10, meta.StartBitWidth());
+
 }
 
 TEST(VertBlockTest, Next) {
@@ -264,10 +295,10 @@ TEST(VertBlockTest, Next) {
         ite->Next();
         auto key = ite->key();
         auto value = ite->value();
-        EXPECT_EQ(4, key.size());
-        EXPECT_EQ(i, *((int32_t *) key.data()));
-        EXPECT_EQ(4, value.size());
-        EXPECT_EQ(i, *((int32_t *) value.data()));
+        EXPECT_EQ(4, key.size()) << i;
+        EXPECT_EQ(i, *((int32_t *) key.data())) << i;
+        EXPECT_EQ(4, value.size()) << i;
+        EXPECT_EQ(i, *((int32_t *) value.data())) << i;
     }
 }
 

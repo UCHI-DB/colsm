@@ -67,6 +67,7 @@ namespace leveldb {
         void VertBlockBuilder::DumpSection() {
             if (current_section_ != NULL) {
                 meta_.AddSection(offset_, current_section_->StartValue());
+                current_section_->Close();
                 offset_ += current_section_->EstimateSize();
                 section_buffer_.push_back(current_section_);
                 current_section_ = NULL;

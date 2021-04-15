@@ -19,7 +19,7 @@ namespace leveldb {
     namespace vert {
 
         class VertBlockMeta {
-        private:
+        protected:
             uint32_t num_section_;
             // Section offsets
             std::vector<uint64_t> offsets_;
@@ -38,6 +38,9 @@ namespace leveldb {
 
             virtual ~VertBlockMeta();
 
+            uint32_t NumSection() const { return num_section_; }
+
+            uint32_t SectionOffset(uint32_t);
             /**
              * Read the metadata from the given buffer location.
              * @return the bytes read
@@ -85,7 +88,8 @@ namespace leveldb {
             // Key Buffer
             std::vector<uint32_t> keys_plain_;
 
-            Encoding* value_encoding_;
+            Encodings encoding_enum_;
+            Encoding *value_encoding_;
             Encoder *value_encoder_ = NULL;
             Decoder *value_decoder_ = NULL;
 
@@ -94,15 +98,15 @@ namespace leveldb {
         public:
             VertSection();
 
-            VertSection(const Encodings&);
+            VertSection(const Encodings &);
 
             virtual ~VertSection();
 
-            uint32_t NumEntry() { return num_entry_; }
+            uint32_t NumEntry() const { return num_entry_; }
 
-            uint8_t BitWidth() { return bit_width_; }
+            uint8_t BitWidth() const { return bit_width_; }
 
-            int32_t StartValue() { return start_value_; }
+            int32_t StartValue() const { return start_value_; }
 
             void StartValue(int32_t sv) { start_value_ = sv; }
 
@@ -121,6 +125,8 @@ namespace leveldb {
             void Add(int32_t key, const Slice &value);
 
             uint32_t EstimateSize();
+
+            void Close();
 
             void Dump(char *);
 
@@ -163,9 +169,12 @@ namespace leveldb {
         private:
             class VIter;
 
-            const char *data_;
+            const char *raw_data_;
             size_t size_;
             bool owned_;
+
+            VertBlockMeta meta_;
+            const char *content_data_;
         };
     }  // namespace vert
 }  // namespace leveldb

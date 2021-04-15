@@ -19,9 +19,11 @@ namespace leveldb {
         public:
             virtual void Encode(const Slice &) = 0;
 
+            virtual void Close() = 0;
+
             virtual uint32_t EstimateSize() = 0;
 
-            virtual void Finish(uint8_t *) = 0;
+            virtual void Dump(uint8_t *) = 0;
         };
 
         class Decoder {
