@@ -225,6 +225,7 @@ namespace leveldb {
             }
         }
 
+
         class VertBlock::VIter : public Iterator {
         private:
             const Comparator *const comparator_;
@@ -233,8 +234,10 @@ namespace leveldb {
 
             uint32_t section_index_ = -1;
             VertSection section_;
+
             uint32_t entry_index_ = 0;
-            int64_t unpacked_[4];
+            // To support m256i assignment, make sure the variable is aligned
+            alignas(64) __m256i unpacked_;
             uint32_t group_index_ = -1;
             uint32_t group_offset_ = 8;
 
@@ -259,10 +262,7 @@ namespace leveldb {
                 auto group_start =
                         section_.KeysData() + group_index_ * section_.BitWidth();
                 auto unpacked = unpacker_->unpack(group_start);
-                unpacked_[0] = unpacked[0];
-                unpacked_[1] = unpacked[1];
-                unpacked_[2] = unpacked[2];
-                unpacked_[3] = unpacked[3];
+                unpacked_ = unpacked;
             }
 
             void LoadEntry() {
