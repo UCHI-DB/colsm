@@ -51,7 +51,7 @@ namespace leveldb {
              * Write metadata to the buffer
              * @return the bytes written
              */
-            uint32_t Write(char *);
+            void Write(char *);
 
             uint32_t EstimateSize();
 

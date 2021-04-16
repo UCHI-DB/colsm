@@ -319,7 +319,7 @@ add_executable(leveldbutil
 target_link_libraries(leveldbutil leveldb)
 
 
-add_executable(block_runner table/block_runner.cc)
+add_executable(block_runner colsm/block_runner.cc)
 target_link_libraries(block_runner PRIVATE leveldb)
 target_compile_options(block_runner PUBLIC ${SBOOST_SIMD_FLAGS})
 

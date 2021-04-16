@@ -5,11 +5,12 @@
 
 #include "leveldb/comparator.h"
 
-#include "block.h"
-#include "block_builder.h"
+#include "table/block.h"
+#include "table/block_builder.h"
+#include "table/format.h"
+
 #include "vert_block.h"
 #include "vert_block_builder.h"
-#include "format.h"
 
 using namespace leveldb;
 using namespace leveldb::vert;

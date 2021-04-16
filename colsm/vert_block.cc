@@ -110,7 +110,7 @@ namespace leveldb {
             return 9 + num_section_ * 8 + BitPackSize();
         }
 
-        uint32_t VertBlockMeta::Write(char *out) {
+        void VertBlockMeta::Write(char *out) {
             char *pointer = out;
             *reinterpret_cast<uint32_t *>(pointer) = num_section_;
             pointer += 4;
