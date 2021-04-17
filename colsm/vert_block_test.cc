@@ -260,12 +260,12 @@ TEST(VertBlockTest, Build) {
     EXPECT_EQ(8, offset.size());
     EXPECT_EQ(0, offset[0]);
     EXPECT_EQ(1154, offset[1]);
-    EXPECT_EQ(1154*2, offset[2]);
-    EXPECT_EQ(1154*3, offset[3]);
-    EXPECT_EQ(1154*4, offset[4]);
-    EXPECT_EQ(1154*5, offset[5]);
-    EXPECT_EQ(1154*6, offset[6]);
-    EXPECT_EQ(1154*7, offset[7]);
+    EXPECT_EQ(1154 * 2, offset[2]);
+    EXPECT_EQ(1154 * 3, offset[3]);
+    EXPECT_EQ(1154 * 4, offset[4]);
+    EXPECT_EQ(1154 * 5, offset[5]);
+    EXPECT_EQ(1154 * 6, offset[6]);
+    EXPECT_EQ(1154 * 7, offset[7]);
 
     EXPECT_EQ(10, meta.StartBitWidth());
 
@@ -303,12 +303,86 @@ TEST(VertBlockTest, Next) {
 }
 
 TEST(VertBlockTest, Seek) {
-    // Scenario: two blocks, first has data 0-100
+    Options option;
+    VertBlockBuilder builder(&option);
+    builder.encoding_ = Encodings::LENGTH;
+
+    int buffer = 0;
+    Slice write_key((const char *) &buffer, 4);
+    for (uint32_t i = 0; i < 1000; ++i) {
+        buffer = 2 * i;
+        builder.Add(write_key, write_key);
+    }
+    auto result = builder.Finish();
+
+    BlockContents content;
+    content.data = result;
+    content.cachable = false;
+    content.heap_allocated = false;
+    VertBlock block(content);
+
+    {
+        auto ite = block.NewIterator(NULL);
+        int target_key = 10;
+        Slice target((const char *) &target_key, 4);
+        ite->Seek(target);
+        EXPECT_TRUE(ite->status().ok());
+        auto key = ite->key();
+        auto value = ite->value();
+        EXPECT_EQ(4, key.size());
+        EXPECT_EQ(10, *((int32_t *) key.data()));
+        EXPECT_EQ(4, value.size());
+        EXPECT_EQ(10, *((int32_t *) value.data()));
+    }
+
+    {
+        auto ite = block.NewIterator(NULL);
+        int target_key = 11;
+        Slice target((const char *) &target_key, 4);
+        ite->Seek(target);
+        EXPECT_TRUE(ite->status().IsNotFound());
+    }
 }
 
 
 TEST(VertBlockTest, SeekThenNext) {
+    Options option;
+    VertBlockBuilder builder(&option);
+    builder.encoding_ = Encodings::LENGTH;
 
+    int buffer = 0;
+    Slice write_key((const char *) &buffer, 4);
+    for (uint32_t i = 0; i < 1000; ++i) {
+        buffer = 2 * i;
+        builder.Add(write_key, write_key);
+    }
+    auto result = builder.Finish();
+
+    BlockContents content;
+    content.data = result;
+    content.cachable = false;
+    content.heap_allocated = false;
+    VertBlock block(content);
+
+    {
+        auto ite = block.NewIterator(NULL);
+        int target_key = 10;
+        Slice target((const char *) &target_key, 4);
+        ite->Seek(target);
+        EXPECT_TRUE(ite->status().ok());
+        int i = 0;
+        do {
+            auto key = ite->key();
+            auto value = ite->value();
+            EXPECT_EQ(4, key.size());
+            EXPECT_EQ((5 + i) * 2, *((int32_t *) key.data())) << i;
+            EXPECT_EQ(4, value.size());
+            EXPECT_EQ((5 + i) * 2, *((int32_t *) value.data())) << i;
+            ite->Next();
+            i++;
+        } while (ite->Valid());
+        EXPECT_EQ(i,994);
+    }
 }
 
 // LevelDB test did not use gtest_main

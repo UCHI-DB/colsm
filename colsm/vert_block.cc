@@ -298,10 +298,15 @@ namespace leveldb {
                     group_offset_ = entry_index_ & 0x7;
                     LoadGroup();
                     LoadEntry();
+
                     // Sequential skip to value
                     auto decoder = section_.ValueDecoder();
                     decoder->Skip(entry_index_);
                     value_ = decoder->Decode();
+
+                    // Prepare for invoking of Next()
+                    entry_index_++;
+                    group_offset_++;
                 }
             }
 
