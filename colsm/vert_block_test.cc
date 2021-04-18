@@ -249,7 +249,7 @@ TEST(VertBlockTest, Build) {
     // section_size = 128, 8 sections
     // meta = 9 + 9 * 8 + 4 * 9/8 = 86
     // section =
-    EXPECT_EQ(9049, result.size());
+    EXPECT_EQ(9113, result.size());
 
     auto data = result.data();
 
@@ -371,7 +371,7 @@ TEST(VertBlockTest, SeekThenNext) {
         ite->Seek(target);
         EXPECT_TRUE(ite->status().ok());
         int i = 0;
-        do {
+        while (ite->Valid()) {
             auto key = ite->key();
             auto value = ite->value();
             EXPECT_EQ(4, key.size());
@@ -380,8 +380,8 @@ TEST(VertBlockTest, SeekThenNext) {
             EXPECT_EQ((5 + i) * 2, *((int32_t *) value.data())) << i;
             ite->Next();
             i++;
-        } while (ite->Valid());
-        EXPECT_EQ(i,994);
+        }
+        EXPECT_EQ(i, 995);
     }
 }
 

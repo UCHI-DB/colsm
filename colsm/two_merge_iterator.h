@@ -11,11 +11,8 @@ namespace leveldb {
 
     namespace vert {
 
-        class TwoMergeIterator : public Iterator {
+        Iterator* sortMergeIterator(Iterator*, Iterator*);
 
-        public:
-            TwoMergeIterator(Iterator *, Iterator *);
-        };
     }
 }
 
