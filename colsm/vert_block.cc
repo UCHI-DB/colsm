@@ -307,10 +307,12 @@ namespace leveldb {
 
             void SeekToFirst() override {
                 // Not supported
+                status_ = Status::NotSupported(Slice("SeekToFirst Not Supported"));
             }
 
             void SeekToLast() override {
                 // Not supported
+                status_ = Status::NotSupported(Slice("SeekToLast Not Supported"));
             }
 
             void Next() override {
@@ -342,11 +344,12 @@ namespace leveldb {
 
             void Prev() override {
                 // Not supported
+                status_ = Status::NotSupported(Slice("Prev Not Supported"));
             }
 
             bool Valid() const override {
                 return entry_index_ < section_.NumEntry() ||
-                       section_index_ < meta_.NumSection() - 1;
+                        section_index_ < meta_.NumSection() - 1;
             }
 
             Slice key() const override { return key_; }
