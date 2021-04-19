@@ -196,6 +196,8 @@ target_sources(leveldb
     "colsm/vert_block_builder.h"
     "colsm/sortmerge_iterator.cc"
     "colsm/sortmerge_iterator.h"
+    "colsm/comparators.cc"
+    "colsm/comparators.h"
     "util/arena.cc"
     "util/arena.h"
     "util/bloom.cc"
@@ -438,6 +440,7 @@ if(LEVELDB_BUILD_BENCHMARKS)
   endfunction(colsm_benchmark)
 
   colsm_benchmark(vert_block_read_benchmark colsm/vert_block_read_benchmark.cc)
+  colsm_benchmark(vert_block_merge_benchmark colsm/vert_block_merge_benchmark.cc)
 
 
   function(leveldb_benchmark bench_file)
