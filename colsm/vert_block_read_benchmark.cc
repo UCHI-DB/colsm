@@ -3,6 +3,7 @@
 //
 #include <benchmark/benchmark.h>
 #include <iostream>
+#include <memory>
 
 #include "leveldb/comparator.h"
 
@@ -11,28 +12,11 @@
 #include "table/format.h"
 #include "vert_block.h"
 #include "vert_block_builder.h"
+#include "comparators.h"
 
+using namespace std;
 using namespace leveldb;
 using namespace leveldb::vert;
-
-class IntComparator : public Comparator {
-public:
-    const char *Name() const override { return "IntComparator"; }
-
-    int Compare(const Slice &a, const Slice &b) const override {
-        if (b.size() < a.size()) {
-            return 1;
-        }
-        int aint = *((int32_t *) a.data());
-        int bint = *((int32_t *) b.data());
-        return aint - bint;
-    }
-
-    void FindShortestSeparator(std::string *start,
-                               const Slice &limit) const override {}
-
-    void FindShortSuccessor(std::string *key) const override {}
-};
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
@@ -44,7 +28,7 @@ protected:
     Block *blockWithInt_;
     VertBlock *vblock_;
 
-    IntComparator *comparator_;
+    unique_ptr<Comparator> comparator_;
 
     Slice key_;
     char vbuffer_[16384];
@@ -54,7 +38,7 @@ public:
     // add members as needed
 
     BlockReadBenchmark() {
-        comparator_ = new IntComparator();
+        comparator_ = intComparator();
         num_entry_ = 1000000;
         {
             std::vector<int32_t> buffer;
@@ -86,7 +70,7 @@ public:
             uint32_t intkey;
 
             Options option;
-            option.comparator = new IntComparator();
+            option.comparator = comparator_.get();
             BlockBuilder builder((const Options *) &option);
 
             for (uint32_t i = 0; i < num_entry_; ++i) {
@@ -127,7 +111,6 @@ public:
         delete block_;
         delete blockWithInt_;
         delete vblock_;
-        delete comparator_;
     }
 };
 
@@ -145,18 +128,6 @@ BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State &state) {
         //    }
     }
 }
-
-// BENCHMARK_F(BlockBenchmark, NormalWithIntKey)(benchmark::State& state) {
-//  for (auto _ : state) {
-//    auto ite = blockWithInt_->NewIterator(comparator_);
-//
-//    int a = 39703;
-//    Slice target((const char*)&a,4);
-//    ite->Seek(target);
-//    key_ = ite->key();
-//    delete ite;
-//  }
-//}
 
 BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State &state) {
     auto ite = vblock_->NewIterator(NULL);

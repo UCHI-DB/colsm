@@ -21,6 +21,7 @@ namespace leveldb {
 
             Iterator *pointer_;
 
+            bool both_valid_ = true;
         public:
             TwoMergeIterator(const Comparator *comparator, Iterator *left, Iterator *right) : comparator_(comparator) {
                 left_ = unique_ptr<Iterator>(left);
@@ -48,15 +49,23 @@ namespace leveldb {
             void Next() override {
                 pointer_->Next();
 
-                auto compared = comparator_->Compare(left_->key(), right_->key());
-                if (compared < 0) {
-                    pointer_ = left_.get();
-                } else if (compared == 0) {
-                    pointer_ = left_.get();
-                    // In the case of equal, left preempts
-                    right_->Next();
-                } else {
-                    pointer_ = right_.get();
+                if (both_valid_) {
+                    if (pointer_->Valid()) {
+                        auto compared = comparator_->Compare(left_->key(), right_->key());
+                        if (compared < 0) {
+                            pointer_ = left_.get();
+                        } else if (compared == 0) {
+                            pointer_ = left_.get();
+                            // In the case of equal, left preempts
+                            right_->Next();
+                        } else {
+                            pointer_ = right_.get();
+                        }
+                    } else {
+                        both_valid_ = false;
+                        pointer_ = (Iterator *) (((uint64_t) left_.get() + (uint64_t) right_.get()) -
+                                                 (uint64_t) pointer_);
+                    }
                 }
             }
 
