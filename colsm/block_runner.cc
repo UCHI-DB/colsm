@@ -2,6 +2,8 @@
 // Created by Hao Jiang on 12/2/20.
 //
 #include <iostream>
+#include <vector>
+#include <memory>
 
 #include "leveldb/comparator.h"
 
@@ -11,128 +13,74 @@
 
 #include "vert_block.h"
 #include "vert_block_builder.h"
+#include "comparators.h"
+#include "sortmerge_iterator.h"
 
+using namespace std;
 using namespace leveldb;
 using namespace leveldb::vert;
 
-void runVert() {
-  VertBlockBuilder vbb();
-
-  uint32_t intkey;
-  uint32_t intvalue;
-  Slice key((const char*)&intkey, 4);
-  Slice value((const char*)&intvalue, 4);
-
-  VertBlockBuilder builder(NULL);
-
-  for (uint32_t i = 0; i < 1000000; ++i) {
-    intkey = i;
-    intvalue = i;
-    builder.Add(key, value);
-  }
-
-  auto result = builder.Finish();
-
-  BlockContents content{result, true, true};
-  VertBlock vertBlock(content);
-
-  auto ite = vertBlock.NewIterator(NULL);
-  int a = 39703;
-  Slice target((const char*)&a, 4);
-  ite->Seek(target);
-  std::cout << *((const int32_t*)ite->key().data()) << std::endl;
-  delete ite;
-}
-using namespace leveldb;
-
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-void runNormal() {
-  std::vector<int32_t> buffer;
-  for (auto i = 0; i < 100000; ++i) {
-    buffer.push_back(i);
-  }
-  std::sort(buffer.begin(), buffer.end(), binary_sorter);
+BlockContents prepareVBlock(std::vector<int> &keys, int value_len, Encodings encoding) {
+    std::sort(keys.begin(), keys.end(), binary_sorter);
+    auto comparator = leveldb::vert::intComparator();
+    uint32_t num_entry = keys.size();
+    uint32_t intkey;
+    char value_buffer[value_len];
+    Slice key((const char *) &intkey, 4);
+    Slice value(value_buffer, value_len);
 
-  uint32_t intkey;
-  uint32_t intvalue;
+    Options option;
+    option.comparator = comparator.get();
+    VertBlockBuilder builder((const Options *) &option);
+    builder.encoding_ = encoding;
 
-  Options option;
-  option.comparator = leveldb::BytewiseComparator();
-  BlockBuilder builder((const Options*)&option);
-
-  for (auto i = 0; i < 100000; ++i) {
-    intkey = buffer[i];
-    intvalue = i;
-    Slice key((const char*)&intkey, 4);
-    Slice value((const char*)&intvalue, 4);
-    builder.Add(key, value);
-  }
-  auto result = builder.Finish();
-  char* copied = (char*)malloc(result.size());
-  memcpy(copied, result.data(), result.size());
-  Slice heap(copied, result.size());
-  BlockContents content{heap, true, true};
-  Block block(content);
-
-  auto ite = block.NewIterator(option.comparator);
-
-  int a = 39703;
-  Slice target((const char*)&a, 4);
-  ite->Seek(target);
-  std::cout << *((const int32_t*)ite->key().data()) << std::endl;
-  delete ite;
-}
-
-class IntComparator : public Comparator {
- public:
-  const char* Name() const override { return "IntComparator"; }
-
-  int Compare(const Slice& a, const Slice& b) const override {
-    if (b.size() < a.size()) {
-      return 1;
+    for (auto i = 0; i < num_entry; ++i) {
+        intkey = keys[i];
+        builder.Add(key, value);
     }
-    int aint = *((int32_t*)a.data());
-    int bint = *((int32_t*)b.data());
-    return aint - bint;
-  }
-
-  void FindShortestSeparator(std::string* start,
-                             const Slice& limit) const override {}
-
-  void FindShortSuccessor(std::string* key) const override {}
-};
-
-void runNormalWithIntKey() {
-  uint32_t intkey;
-  uint32_t intvalue;
-
-  Options option;
-  option.comparator = new IntComparator();
-  BlockBuilder builder((const Options*)&option);
-
-  for (uint32_t i = 0; i < 100000; ++i) {
-    intkey = i;
-    intvalue = i;
-    Slice key((const char*)&intkey, 4);
-    Slice value((const char*)&intvalue, 4);
-    builder.Add(key, value);
-  }
-  auto result = builder.Finish();
-  char* copied = (char*)malloc(result.size());
-  memcpy(copied, result.data(), result.size());
-  Slice heap(copied, result.size());
-  BlockContents content{heap, true, true};
-  Block block(content);
-
-  auto ite = block.NewIterator(option.comparator);
-  int a = 39703;
-  Slice target((const char*)&a, 4);
-  ite->Seek(target);
-  std::cout << *((const int32_t*)ite->key().data()) << std::endl;
-  delete ite;
-
-  delete option.comparator;
+    auto result = builder.Finish();
+    char *copied = (char *) malloc(result.size());
+    memcpy(copied, result.data(), result.size());
+    Slice heap(copied, result.size());
+    return BlockContents{heap, true, false};
 }
 
-int main() { runVert(); }
+void runVert() {
+    vector<int32_t> key1;
+    vector<int32_t> key2;
+    for(int i = 0 ; i < 1000000;++i) {
+        key1.push_back(i*2);
+        key2.push_back(i*2+1);
+    }
+
+    auto content1 = prepareVBlock(key1, 16,Encodings::LENGTH);
+    auto content2 = prepareVBlock(key2, 16, Encodings::LENGTH);
+
+    for (auto _: state) {
+        VertBlock block1(content1);
+        VertBlock block2(content2);
+
+        Options option;
+        option.comparator = leveldb::BytewiseComparator();
+        VertBlockBuilder builder((const Options *) &option);
+        builder.encoding_ = Encodings::LENGTH;
+
+        auto ite1 = block1.NewIterator(leveldb::BytewiseComparator());
+        auto ite2 = block2.NewIterator(leveldb::BytewiseComparator());
+        auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(),ite1,ite2);
+        while(ite->Valid()) {
+            ite->Next();
+            builder.Add(ite->key(),ite->value());
+        }
+        builder.Finish();
+    }
+
+    delete content1.data.data();
+    delete content2.data.data();
+}
+
+int main() {
+    runVert();
+}

@@ -3,6 +3,7 @@
 //
 #include <benchmark/benchmark.h>
 #include <iostream>
+#include <memory>
 
 #include "leveldb/comparator.h"
 
@@ -11,105 +12,132 @@
 #include "table/format.h"
 #include "vert_block.h"
 #include "vert_block_builder.h"
+#include "sortmerge_iterator.h"
+#include "comparators.h"
 
+using namespace std;
 using namespace leveldb;
 using namespace leveldb::vert;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-void prepareBlock(std::vector<int> keys, int value_len) {
+BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
     std::sort(keys.begin(), keys.end(), binary_sorter);
 
     uint32_t num_entry = keys.size();
     uint32_t intkey;
     char value_buffer[value_len];
+    Slice key((const char *) &intkey, 4);
+    Slice value(value_buffer, value_len);
 
     Options option;
     option.comparator = leveldb::BytewiseComparator();
     BlockBuilder builder((const Options *) &option);
 
     for (auto i = 0; i < num_entry; ++i) {
-        intkey = buffer[i];
-        Slice key((const char *) &intkey, 4);
-        Slice value(vbuffer_, value_len_);
+        intkey = keys[i];
         builder.Add(key, value);
     }
     auto result = builder.Finish();
     char *copied = (char *) malloc(result.size());
     memcpy(copied, result.data(), result.size());
     Slice heap(copied, result.size());
-    BlockContents content{heap, true, true};
-    block_ = new Block(content);
+    return BlockContents{heap, true, false};
 }
 
-void prepareVBlock(uint32_t num_entry, int value_len) {
-    VertBlockBuilder vbb();
-
+BlockContents prepareVBlock(std::vector<int> &keys, int value_len, Encodings encoding) {
+    std::sort(keys.begin(), keys.end(), binary_sorter);
+    auto comparator = leveldb::vert::intComparator();
+    uint32_t num_entry = keys.size();
     uint32_t intkey;
+    char value_buffer[value_len];
     Slice key((const char *) &intkey, 4);
+    Slice value(value_buffer, value_len);
 
-    VertBlockBuilder builder(NULL);
+    Options option;
+    option.comparator = comparator.get();
+    VertBlockBuilder builder((const Options *) &option);
+    builder.encoding_ = encoding;
 
-    for (uint32_t i = 0; i < num_entry_; ++i) {
-        intkey = i;
-        Slice value(vbuffer_, value_len_);
+    for (auto i = 0; i < num_entry; ++i) {
+        intkey = keys[i];
         builder.Add(key, value);
     }
-
     auto result = builder.Finish();
-
-    BlockContents content{result, true, true};
-    vblock_ = new VertBlock(content);
+    char *copied = (char *) malloc(result.size());
+    memcpy(copied, result.data(), result.size());
+    Slice heap(copied, result.size());
+    return BlockContents{heap, true, false};
 }
 
-}
+void BlockMergeWithNoOverlap(benchmark::State &state) {
 
-virtual ~
-
-BlockWriteBenchmark() {
-    delete block_;
-    delete blockWithInt_;
-    delete vblock_;
-    delete comparator_;
-}
-
-};
-
-BENCHMARK_F(BlockWriteBenchmark, Normal)(benchmark::State &state) {
-    for (auto _ : state) {
-        //    for (int i = 0; i < 10; ++i) {
-        auto ite = block_->NewIterator(leveldb::BytewiseComparator());
-
-        int a = 29942;
-        Slice target((const char *) &a, 4);
-        ite->Seek(target);
-        key_ = ite->key();
-        //    std::cout << *((int32_t*)key_.data()) << std::endl;
-        delete ite;
-        //    }
+    vector<int32_t> key1;
+    vector<int32_t> key2;
+    for(int i = 0 ; i < 1000000;++i) {
+        key1.push_back(i*2);
+        key2.push_back(i*2+1);
     }
-}
+    auto content1 = prepareBlock(key1, 16);
+    auto content2 = prepareBlock(key2, 16);
 
-// BENCHMARK_F(BlockBenchmark, NormalWithIntKey)(benchmark::State& state) {
-//  for (auto _ : state) {
-//    auto ite = blockWithInt_->NewIterator(comparator_);
-//
-//    int a = 39703;
-//    Slice target((const char*)&a,4);
-//    ite->Seek(target);
-//    key_ = ite->key();
-//    delete ite;
-//  }
-//}
+    int counter = 0;
+    for (auto _: state) {
+        Block block1(content1);
+        Block block2(content2);
 
-BENCHMARK_F(BlockWriteBenchmark, Vert)(benchmark::State &state) {
-    auto ite = vblock_->NewIterator(NULL);
+        Options option;
+        option.comparator = leveldb::BytewiseComparator();
+        BlockBuilder builder((const Options *) &option);
 
-    for (auto _ : state) {
-        int a = 39703;
-        Slice target((const char *) &a, 4);
-        ite->Seek(target);
-        key_ = ite->key();
+        auto ite1 = block1.NewIterator(leveldb::BytewiseComparator());
+        auto ite2 = block2.NewIterator(leveldb::BytewiseComparator());
+        auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(),ite1,ite2);
+        while(ite->Valid()) {
+            ite->Next();
+            builder.Add(ite->key(),ite->value());
+        }
+        auto result = builder.Finish();
+        counter += result.size();
     }
-    delete ite;
+
+    delete content1.data.data();
+    delete content2.data.data();
 }
+
+void VBlockMergeWithNoOverlap(benchmark::State &state) {
+    vector<int32_t> key1;
+    vector<int32_t> key2;
+    for(int i = 0 ; i < 1000000;++i) {
+        key1.push_back(i*2);
+        key2.push_back(i*2+1);
+    }
+
+    auto content1 = prepareVBlock(key1, 16,Encodings::LENGTH);
+    auto content2 = prepareVBlock(key2, 16, Encodings::LENGTH);
+
+    for (auto _: state) {
+        VertBlock block1(content1);
+        VertBlock block2(content2);
+
+        Options option;
+        option.comparator = leveldb::BytewiseComparator();
+       VertBlockBuilder builder((const Options *) &option);
+       builder.encoding_ = Encodings::LENGTH;
+
+        auto ite1 = block1.NewIterator(leveldb::BytewiseComparator());
+        auto ite2 = block2.NewIterator(leveldb::BytewiseComparator());
+        auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(),ite1,ite2);
+        while(ite->Valid()) {
+            ite->Next();
+            builder.Add(ite->key(),ite->value());
+        }
+        builder.Finish();
+    }
+
+    delete content1.data.data();
+    delete content2.data.data();
+}
+
+BENCHMARK(BlockMergeWithNoOverlap);
+BENCHMARK(VBlockMergeWithNoOverlap);
