@@ -25,6 +25,7 @@ bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 bool int_sorter(int a, int b) { return a - b; }
 
 BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
+    sort(keys.begin(), keys.end(), binary_sorter);
     uint32_t num_entry = keys.size();
     uint32_t intkey;
     char value_buffer[value_len];
@@ -125,17 +126,17 @@ void runHori() {
     ite1->SeekToFirst();
     ite2->SeekToFirst();
     auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(), ite1, ite2);
+
     int counter = 0;
     while (ite->Valid()) {
-        ite->Next();
         builder.Add(ite->key(), ite->value());
-        counter++;
+        ite->Next();
+        counter ++;
     }
-    auto result = builder.Finish();
 
-std::cout<< counter<<'\n';
     delete content1.data.data();
     delete content2.data.data();
+    std::cout << counter << '\n';
 }
 
 int main() {
