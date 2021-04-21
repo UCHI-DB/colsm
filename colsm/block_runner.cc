@@ -22,7 +22,29 @@ using namespace leveldb::vert;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-bool int_sorter(int a, int b) { return a - b;}
+bool int_sorter(int a, int b) { return a - b; }
+
+BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
+    uint32_t num_entry = keys.size();
+    uint32_t intkey;
+    char value_buffer[value_len];
+    Slice key((const char *) &intkey, 4);
+    Slice value(value_buffer, value_len);
+
+    Options option;
+    option.comparator = leveldb::BytewiseComparator();
+    BlockBuilder builder((const Options *) &option);
+
+    for (auto i = 0; i < num_entry; ++i) {
+        intkey = keys[i];
+        builder.Add(key, value);
+    }
+    auto result = builder.Finish();
+    char *copied = (char *) malloc(result.size());
+    memcpy(copied, result.data(), result.size());
+    Slice heap(copied, result.size());
+    return BlockContents{heap, true, false};
+}
 
 BlockContents prepareVBlock(std::vector<int> &keys, int value_len, Encodings encoding) {
     auto comparator = leveldb::vert::intComparator();
@@ -81,6 +103,41 @@ void runVert() {
     delete content2.data.data();
 }
 
+void runHori() {
+    vector<int32_t> key1;
+    vector<int32_t> key2;
+    for (int i = 0; i < 1000000; ++i) {
+        key1.push_back(i * 2);
+        key2.push_back(i * 2 + 1);
+    }
+    auto content1 = prepareBlock(key1, 16);
+    auto content2 = prepareBlock(key2, 16);
+
+    Block block1(content1);
+    Block block2(content2);
+
+    Options option;
+    option.comparator = leveldb::BytewiseComparator();
+    BlockBuilder builder((const Options *) &option);
+
+    auto ite1 = block1.NewIterator(leveldb::BytewiseComparator());
+    auto ite2 = block2.NewIterator(leveldb::BytewiseComparator());
+    ite1->SeekToFirst();
+    ite2->SeekToFirst();
+    auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(), ite1, ite2);
+    int counter = 0;
+    while (ite->Valid()) {
+        ite->Next();
+        builder.Add(ite->key(), ite->value());
+        counter++;
+    }
+    auto result = builder.Finish();
+
+std::cout<< counter<<'\n';
+    delete content1.data.data();
+    delete content2.data.data();
+}
+
 int main() {
-    runVert();
+    runHori();
 }

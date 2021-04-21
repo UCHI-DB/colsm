@@ -21,9 +21,9 @@ using namespace leveldb::vert;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
-    std::sort(keys.begin(), keys.end(), binary_sorter);
+bool int_sorter(int a, int b) { return a - b; }
 
+BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
     uint32_t num_entry = keys.size();
     uint32_t intkey;
     char value_buffer[value_len];
@@ -46,7 +46,6 @@ BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
 }
 
 BlockContents prepareVBlock(std::vector<int> &keys, int value_len, Encodings encoding) {
-    std::sort(keys.begin(), keys.end(), binary_sorter);
     auto comparator = leveldb::vert::intComparator();
     uint32_t num_entry = keys.size();
     uint32_t intkey;
@@ -74,14 +73,15 @@ void BlockMergeWithNoOverlap(benchmark::State &state) {
 
     vector<int32_t> key1;
     vector<int32_t> key2;
-    for(int i = 0 ; i < 1000000;++i) {
-        key1.push_back(i*2);
-        key2.push_back(i*2+1);
+    for (int i = 0; i < 1000000; ++i) {
+        key1.push_back(i * 2);
+        key2.push_back(i * 2 + 1);
     }
+    sort(key1.begin(), key1.end(), binary_sorter);
+    sort(key2.begin(), key2.end(), binary_sorter);
     auto content1 = prepareBlock(key1, 16);
     auto content2 = prepareBlock(key2, 16);
 
-    int counter = 0;
     for (auto _: state) {
         Block block1(content1);
         Block block2(content2);
@@ -92,14 +92,14 @@ void BlockMergeWithNoOverlap(benchmark::State &state) {
 
         auto ite1 = block1.NewIterator(leveldb::BytewiseComparator());
         auto ite2 = block2.NewIterator(leveldb::BytewiseComparator());
-        auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(),ite1,ite2);
-        while(ite->Valid()) {
+        auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(), ite1, ite2);
+        while (ite->Valid()) {
             ite->Next();
-            builder.Add(ite->key(),ite->value());
+            builder.Add(ite->key(), ite->value());
         }
-        auto result = builder.Finish();
-        counter += result.size();
+        builder.Finish();
     }
+
 
     delete content1.data.data();
     delete content2.data.data();
@@ -108,12 +108,13 @@ void BlockMergeWithNoOverlap(benchmark::State &state) {
 void VBlockMergeWithNoOverlap(benchmark::State &state) {
     vector<int32_t> key1;
     vector<int32_t> key2;
-    for(int i = 0 ; i < 1000000;++i) {
-        key1.push_back(i*2);
-        key2.push_back(i*2+1);
+    auto comparator = leveldb::vert::intComparator();
+    for (int i = 0; i < 1000000; ++i) {
+        key1.push_back(i * 2);
+        key2.push_back(i * 2 + 1);
     }
 
-    auto content1 = prepareVBlock(key1, 16,Encodings::LENGTH);
+    auto content1 = prepareVBlock(key1, 16, Encodings::LENGTH);
     auto content2 = prepareVBlock(key2, 16, Encodings::LENGTH);
 
     for (auto _: state) {
@@ -121,16 +122,16 @@ void VBlockMergeWithNoOverlap(benchmark::State &state) {
         VertBlock block2(content2);
 
         Options option;
-        option.comparator = leveldb::BytewiseComparator();
-       VertBlockBuilder builder((const Options *) &option);
-       builder.encoding_ = Encodings::LENGTH;
+        option.comparator = comparator.get();
+        VertBlockBuilder builder((const Options *) &option);
+        builder.encoding_ = Encodings::LENGTH;
 
-        auto ite1 = block1.NewIterator(leveldb::BytewiseComparator());
-        auto ite2 = block2.NewIterator(leveldb::BytewiseComparator());
-        auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(),ite1,ite2);
-        while(ite->Valid()) {
+        auto ite1 = block1.NewIterator(comparator.get());
+        auto ite2 = block2.NewIterator(comparator.get());
+        auto ite = leveldb::vert::sortMergeIterator(comparator.get(), ite1, ite2);
+        while (ite->Valid()) {
             ite->Next();
-            builder.Add(ite->key(),ite->value());
+            builder.Add(ite->key(), ite->value());
         }
         builder.Finish();
     }
