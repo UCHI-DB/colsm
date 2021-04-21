@@ -278,7 +278,7 @@ TEST(VertBlockTest, Next) {
 
     int buffer = 0;
     Slice key((const char *) &buffer, 4);
-    for (uint32_t i = 0; i < 1000; ++i) {
+    for (uint32_t i = 0; i < 1000000; ++i) {
         buffer = i;
         builder.Add(key, key);
     }
@@ -291,7 +291,7 @@ TEST(VertBlockTest, Next) {
     VertBlock block(content);
 
     auto ite = block.NewIterator(NULL);
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 1000000; ++i) {
         ite->Next();
         auto key = ite->key();
         auto value = ite->value();
