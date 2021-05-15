@@ -320,6 +320,8 @@ add_executable(leveldbutil
 )
 target_link_libraries(leveldbutil leveldb)
 
+add_executable(leveldb_runner "colsm/runner.cc")
+target_link_libraries(leveldb_runner leveldb)
 
 add_executable(block_runner colsm/block_runner.cc)
 target_link_libraries(block_runner PRIVATE leveldb)
