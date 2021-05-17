@@ -80,8 +80,8 @@ void runVert() {
         key2.push_back(i * 2 + 1);
     }
 
-    auto content1 = prepareVBlock(key1, 16, Encodings::LENGTH);
-    auto content2 = prepareVBlock(key2, 16, Encodings::LENGTH);
+    auto content1 = prepareVBlock(key1, 64, Encodings::LENGTH);
+    auto content2 = prepareVBlock(key2, 64, Encodings::LENGTH);
 
     VertBlock block1(content1);
     VertBlock block2(content2);
@@ -98,8 +98,9 @@ void runVert() {
         ite->Next();
         builder.Add(ite->key(), ite->value());
     }
-    builder.Finish();
+    auto result = builder.Finish();
 
+    std::cout<< result.size() << endl;
     delete content1.data.data();
     delete content2.data.data();
 }
@@ -111,8 +112,8 @@ void runHori() {
         key1.push_back(i * 2);
         key2.push_back(i * 2 + 1);
     }
-    auto content1 = prepareBlock(key1, 16);
-    auto content2 = prepareBlock(key2, 16);
+    auto content1 = prepareBlock(key1, 64);
+    auto content2 = prepareBlock(key2, 64);
 
     Block block1(content1);
     Block block2(content2);
@@ -127,18 +128,19 @@ void runHori() {
     ite2->SeekToFirst();
     auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(), ite1, ite2);
 
-    int counter = 0;
     while (ite->Valid()) {
         builder.Add(ite->key(), ite->value());
         ite->Next();
-        counter ++;
     }
+
+    auto finished = builder.Finish();
+    std::cout<< finished.size() << endl;
 
     delete content1.data.data();
     delete content2.data.data();
-    std::cout << counter << '\n';
 }
 
 int main() {
     runHori();
+    runVert();
 }

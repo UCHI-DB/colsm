@@ -74,13 +74,15 @@ void BlockMergeWithNoOverlap(benchmark::State &state) {
     vector<int32_t> key1;
     vector<int32_t> key2;
     for (int i = 0; i < 1000000; ++i) {
-        key1.push_back(i);
-        key2.push_back(i+1000000);
+//        key1.push_back(i);
+//        key2.push_back(i+1000000);
+key1.push_back(i*2);
+key2.push_back(i*2+1);
     }
     sort(key1.begin(), key1.end(), binary_sorter);
     sort(key2.begin(), key2.end(), binary_sorter);
-    auto content1 = prepareBlock(key1, 16);
-    auto content2 = prepareBlock(key2, 16);
+    auto content1 = prepareBlock(key1, 64);
+    auto content2 = prepareBlock(key2, 64);
 
     for (auto _: state) {
         Block block1(content1);
@@ -114,12 +116,12 @@ void VBlockMergeWithNoOverlap(benchmark::State &state) {
     vector<int32_t> key2;
     auto comparator = leveldb::vert::intComparator();
     for (int i = 0; i < 1000000; ++i) {
-        key1.push_back(i );
-        key2.push_back(i +1000000);
+        key1.push_back(i*2);
+        key2.push_back(i*2+1);
     }
 
-    auto content1 = prepareVBlock(key1, 16, Encodings::LENGTH);
-    auto content2 = prepareVBlock(key2, 16, Encodings::LENGTH);
+    auto content1 = prepareVBlock(key1, 64, Encodings::LENGTH);
+    auto content2 = prepareVBlock(key2, 64, Encodings::LENGTH);
 
     for (auto _: state) {
         VertBlock block1(content1);
