@@ -11,12 +11,15 @@
 
 #include "leveldb/iterator.h"
 #include "leveldb/slice.h"
+#include "table/block.h"
 
 #include "table/format.h"
 #include "vert_coder.h"
 
 namespace leveldb {
     namespace vert {
+
+        const uint32_t MAGIC = 0xCAAEDADE;
 
         class VertBlockMeta {
         protected:
@@ -41,6 +44,7 @@ namespace leveldb {
             uint32_t NumSection() const { return num_section_; }
 
             uint32_t SectionOffset(uint32_t);
+
             /**
              * Read the metadata from the given buffer location.
              * @return the bytes read
@@ -150,17 +154,16 @@ namespace leveldb {
             int32_t FindStart(int32_t target);
         };
 
-
-        class VertBlock {
+        class VertBlockCore : public BlockCore {
         public:
             // Initialize the block with the specified contents.
-            explicit VertBlock(const BlockContents &);
+            explicit VertBlockCore(const BlockContents &);
 
-            VertBlock(const VertBlock &) = delete;
+            VertBlockCore(const VertBlockCore &) = delete;
 
-            VertBlock &operator=(const VertBlock &) = delete;
+            VertBlockCore &operator=(const VertBlockCore &) = delete;
 
-            ~VertBlock();
+            ~VertBlockCore();
 
             size_t size() const { return size_; }
 

@@ -95,7 +95,8 @@ namespace leveldb {
 
             // Allocate Space
             // TODO In real world this should be directly write to file
-            internal_buffer_ = new char[meta_size + section_size];
+            uint32_t buffer_size = meta_size + section_size + 4;
+            internal_buffer_ = new char[buffer_size];
             memset(internal_buffer_, 0, meta_size + section_size);
             meta_.Write(internal_buffer_);
             auto pointer = internal_buffer_ + meta_size;
@@ -105,7 +106,10 @@ namespace leveldb {
                 pointer += sec->EstimateSize();
             }
 
-            return Slice(internal_buffer_, meta_size + section_size);
+            // MAGIC
+            *(uint32_t *) (internal_buffer_ + meta_size + section_size) = MAGIC;
+
+            return Slice(internal_buffer_, buffer_size);
         }
 
         size_t VertBlockBuilder::CurrentSizeEstimate() const {

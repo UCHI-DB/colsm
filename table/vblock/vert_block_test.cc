@@ -288,7 +288,7 @@ TEST(VertBlockTest, Next) {
     content.data = result;
     content.cachable = false;
     content.heap_allocated = false;
-    VertBlock block(content);
+    VertBlockCore block(content);
 
     auto ite = block.NewIterator(NULL);
     for (int i = 0; i < 1000000; ++i) {
@@ -319,7 +319,7 @@ TEST(VertBlockTest, Seek) {
     content.data = result;
     content.cachable = false;
     content.heap_allocated = false;
-    VertBlock block(content);
+    VertBlockCore block(content);
 
     {
         auto ite = block.NewIterator(NULL);
@@ -362,7 +362,7 @@ TEST(VertBlockTest, SeekThenNext) {
     content.data = result;
     content.cachable = false;
     content.heap_allocated = false;
-    VertBlock block(content);
+    VertBlockCore block(content);
 
     {
         auto ite = block.NewIterator(NULL);

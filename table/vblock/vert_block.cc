@@ -209,7 +209,7 @@ namespace leveldb {
             return sbp.geq(keys_data_, num_entry_);
         }
 
-        VertBlock::VertBlock(const BlockContents &data)
+        VertBlockCore::VertBlockCore(const BlockContents &data)
                 : raw_data_(data.data.data()),
                   size_(data.data.size()),
                   owned_(data.heap_allocated) {
@@ -217,13 +217,13 @@ namespace leveldb {
             content_data_ = raw_data_ + meta_.EstimateSize();
         }
 
-        VertBlock::~VertBlock() {
+        VertBlockCore::~VertBlockCore() {
             if (owned_) {
                 delete[] raw_data_;
             }
         }
 
-        class VertBlock::VIter : public Iterator {
+        class VertBlockCore::VIter : public Iterator {
         private:
             const Comparator *const comparator_;
             VertBlockMeta &meta_;
@@ -359,7 +359,7 @@ namespace leveldb {
             Status status() const override { return status_; }
         };
 
-        Iterator *VertBlock::NewIterator(const Comparator *comparator) {
+        Iterator *VertBlockCore::NewIterator(const Comparator *comparator) {
             return new VIter(comparator, meta_, content_data_);
         }
 

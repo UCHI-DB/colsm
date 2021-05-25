@@ -26,7 +26,7 @@ protected:
 
     Block *block_;
     Block *blockWithInt_;
-    VertBlock *vblock_;
+    VertBlockCore *vblock_;
 
     unique_ptr<Comparator> comparator_;
 
@@ -103,7 +103,7 @@ public:
             auto result = builder.Finish();
 
             BlockContents content{result, true, true};
-            vblock_ = new VertBlock(content);
+            vblock_ = new VertBlockCore(content);
         }
     }
 
