@@ -6,65 +6,64 @@
 #define LEVELDB_BLOCK_VERT_BUILDER_H
 
 #include <cstdint>
-#include "table/format.h"
-#include "vert_block.h"
 #include <vector>
 
+#include "table/block_builder.h"
+
+#include "vert_block.h"
+
 namespace leveldb {
-    namespace vert {
+namespace vert {
 
 /**
  * Builder for building vertical blocks
  */
-        class VertBlockBuilder {
-        public:
-            Encodings encoding_ = Encodings::PLAIN;
+class VertBlockBuilder : public BlockBuilder {
+ public:
+  Encodings encoding_ = Encodings::PLAIN;
 
-            explicit VertBlockBuilder(const Options *options);
+  explicit VertBlockBuilder(const Options* options);
 
-            VertBlockBuilder(const VertBlockBuilder &) = delete;
+  VertBlockBuilder(const VertBlockBuilder&) = delete;
 
-            VertBlockBuilder &operator=(const VertBlockBuilder &) = delete;
+  VertBlockBuilder& operator=(const VertBlockBuilder&) = delete;
 
-            virtual ~VertBlockBuilder();
+  virtual ~VertBlockBuilder();
 
-            // Reset the contents as if the BlockBuilder was just constructed.
-            void Reset();
+  // Reset the contents as if the BlockBuilder was just constructed.
+  void Reset();
 
-            // REQUIRES: Finish() has not been called since the last call to Reset().
-            // REQUIRES: key is larger than any previously added key
-            void Add(const Slice &key, const Slice &value);
+  // REQUIRES: Finish() has not been called since the last call to Reset().
+  // REQUIRES: key is larger than any previously added key
+  void Add(const Slice& key, const Slice& value);
 
-            // Finish building the block and return a slice that refers to the
-            // block contents.  The returned slice will remain valid for the
-            // lifetime of this builder or until Reset() is called.
-            Slice Finish();
+  // Finish building the block and return a slice that refers to the
+  // block contents.  The returned slice will remain valid for the
+  // lifetime of this builder or until Reset() is called.
+  Slice Finish();
 
-            // Returns an estimate of the current (uncompressed) size of the block
-            // we are building.
-            size_t CurrentSizeEstimate() const;
+  // Returns an estimate of the current (uncompressed) size of the block
+  // we are building.
+  size_t CurrentSizeEstimate() const;
 
-            // Return true iff no entries have been added since the last Reset()
-            bool empty() const;
+  // Return true iff no entries have been added since the last Reset()
+  bool empty() const;
 
-        private:
-            uint32_t section_size_;
+ private:
+  uint32_t section_size_;
 
-            VertBlockMeta meta_;
-            std::vector<VertSection *> section_buffer_;
+  VertBlockMeta meta_;
+  std::vector<VertSection*> section_buffer_;
 
+  uint64_t offset_;
 
+  VertSection* current_section_;
 
-            uint64_t offset_;
+  char* internal_buffer_;
 
-            VertSection *current_section_;
+  void DumpSection();
+};
 
-            char *internal_buffer_;
-
-            void DumpSection();
-        };
-
-
-    }
-}
+}  // namespace vert
+}  // namespace leveldb
 #endif  // LEVELDB_BLOCK_VERT_BUILDER_H

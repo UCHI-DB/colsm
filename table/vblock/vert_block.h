@@ -11,175 +11,178 @@
 
 #include "leveldb/iterator.h"
 #include "leveldb/slice.h"
-#include "table/block.h"
 
+#include "table/block.h"
 #include "table/format.h"
+
 #include "vert_coder.h"
 
 namespace leveldb {
-    namespace vert {
+namespace vert {
 
-        const uint32_t MAGIC = 0xCAAEDADE;
+const uint32_t MAGIC = 0xCAAEDADE;
 
-        class VertBlockMeta {
-        protected:
-            uint32_t num_section_;
-            // Section offsets
-            std::vector<uint64_t> offsets_;
-            int32_t start_min_;
-            uint8_t start_bitwidth_;
-            uint8_t *starts_;
+class VertBlockMeta {
+ protected:
+  uint32_t num_section_;
+  // Section offsets
+  std::vector<uint64_t> offsets_;
+  int32_t start_min_;
+  uint8_t start_bitwidth_;
+  uint8_t* starts_;
 
-            std::vector<uint32_t> starts_plain_;
+  std::vector<uint32_t> starts_plain_;
 
-            uint32_t BitPackSize() {
-                return (start_bitwidth_ * num_section_ + 63) >> 6 << 3;
-            }
+  uint32_t BitPackSize() const {
+    return (start_bitwidth_ * num_section_ + 63) >> 6 << 3;
+  }
 
-        public:
-            VertBlockMeta();
+ public:
+  VertBlockMeta();
 
-            virtual ~VertBlockMeta();
+  virtual ~VertBlockMeta();
 
-            uint32_t NumSection() const { return num_section_; }
+  void Reset();
 
-            uint32_t SectionOffset(uint32_t);
+  uint32_t NumSection() const { return num_section_; }
 
-            /**
-             * Read the metadata from the given buffer location.
-             * @return the bytes read
-             */
-            uint32_t Read(const char *);
+  uint32_t SectionOffset(uint32_t);
 
-            /**
-             * Write metadata to the buffer
-             * @return the bytes written
-             */
-            void Write(char *);
+  /**
+   * Read the metadata from the given buffer location.
+   * @return the bytes read
+   */
+  uint32_t Read(const char*);
 
-            uint32_t EstimateSize();
+  /**
+   * Write metadata to the buffer
+   * @return the bytes written
+   */
+  void Write(char*);
 
-            /**
-             * Add a section to the meta
-             * @param offset offset in byte of the section
-             * @param start_value start_value of the section
-             */
-            void AddSection(uint64_t offset, int32_t start_value);
+  uint32_t EstimateSize() const;
 
-            void Finish();
+  /**
+   * Add a section to the meta
+   * @param offset offset in byte of the section
+   * @param start_value start_value of the section
+   */
+  void AddSection(uint64_t offset, int32_t start_value);
 
-            /**
-             * Search for the first section containing the value
-             * @param value
-             * @return index of the section
-             */
-            uint64_t Search(int32_t value);
-        };
+  void Finish();
 
-        class VertSection {
-        private:
-            // Basic Info
-            uint32_t num_entry_;
-            int32_t start_value_;
-            uint8_t bit_width_;
-            uint32_t estimated_size_;
+  /**
+   * Search for the first section containing the value
+   * @param value
+   * @return index of the section
+   */
+  uint64_t Search(int32_t value);
+};
 
-            bool reading_;
+class VertSection {
+ private:
+  // Basic Info
+  uint32_t num_entry_;
+  int32_t start_value_;
+  uint8_t bit_width_;
+  uint32_t estimated_size_;
 
-            // Encoded Key Data
-            const uint8_t *keys_data_;
+  bool reading_;
 
-            // Key Buffer
-            std::vector<uint32_t> keys_plain_;
+  // Encoded Key Data
+  const uint8_t* keys_data_;
 
-            Encodings encoding_enum_;
-            Encoding *value_encoding_;
-            Encoder *value_encoder_ = NULL;
-            Decoder *value_decoder_ = NULL;
+  // Key Buffer
+  std::vector<uint32_t> keys_plain_;
 
-            uint32_t BitPackSize() { return (bit_width_ * num_entry_ + 63) >> 6 << 3; }
+  Encodings encoding_enum_;
+  Encoding* value_encoding_;
+  Encoder* value_encoder_ = NULL;
+  Decoder* value_decoder_ = NULL;
 
-        public:
-            VertSection();
+  uint32_t BitPackSize() { return (bit_width_ * num_entry_ + 63) >> 6 << 3; }
 
-            VertSection(const Encodings &);
+ public:
+  VertSection();
 
-            virtual ~VertSection();
+  VertSection(const Encodings&);
 
-            uint32_t NumEntry() const { return num_entry_; }
+  virtual ~VertSection();
 
-            uint8_t BitWidth() const { return bit_width_; }
+  uint32_t NumEntry() const { return num_entry_; }
 
-            int32_t StartValue() const { return start_value_; }
+  uint8_t BitWidth() const { return bit_width_; }
 
-            void StartValue(int32_t sv) { start_value_ = sv; }
+  int32_t StartValue() const { return start_value_; }
 
-            const uint8_t *KeysData() { return keys_data_; }
+  void StartValue(int32_t sv) { start_value_ = sv; }
 
-            /**
-             * Expose Decoder for iterator operations
-             *
-             * @return
-             */
-            Decoder *ValueDecoder() { return value_decoder_; }
+  const uint8_t* KeysData() { return keys_data_; }
 
-            //
-            // Functions for writer mode
-            //
-            void Add(int32_t key, const Slice &value);
+  /**
+   * Expose Decoder for iterator operations
+   *
+   * @return
+   */
+  Decoder* ValueDecoder() { return value_decoder_; }
 
-            uint32_t EstimateSize();
+  //
+  // Functions for writer mode
+  //
+  void Add(int32_t key, const Slice& value);
 
-            void Close();
+  uint32_t EstimateSize();
 
-            void Dump(char *);
+  void Close();
 
-            //
-            // Functions for reader mode
-            //
-            void Read(const char *);
+  void Dump(char*);
 
-            /**
-             * Find target in the section
-             * @param target
-             * @return
-             */
-            int32_t Find(int32_t target);
+  //
+  // Functions for reader mode
+  //
+  void Read(const char*);
 
-            /**
-             * Find the first entry that is geq target
-             * @param target
-             * @return
-             */
-            int32_t FindStart(int32_t target);
-        };
+  /**
+   * Find target in the section
+   * @param target
+   * @return
+   */
+  int32_t Find(int32_t target);
 
-        class VertBlockCore : public BlockCore {
-        public:
-            // Initialize the block with the specified contents.
-            explicit VertBlockCore(const BlockContents &);
+  /**
+   * Find the first entry that is geq target
+   * @param target
+   * @return
+   */
+  int32_t FindStart(int32_t target);
+};
 
-            VertBlockCore(const VertBlockCore &) = delete;
+class VertBlockCore : public BlockCore {
+ public:
+  // Initialize the block with the specified contents.
+  explicit VertBlockCore(const BlockContents&);
 
-            VertBlockCore &operator=(const VertBlockCore &) = delete;
+  VertBlockCore(const VertBlockCore&) = delete;
 
-            ~VertBlockCore();
+  VertBlockCore& operator=(const VertBlockCore&) = delete;
 
-            size_t size() const { return size_; }
+  ~VertBlockCore();
 
-            Iterator *NewIterator(const Comparator *comparator);
+  size_t size() const { return size_; }
 
-        private:
-            class VIter;
+  Iterator* NewIterator(const Comparator* comparator);
 
-            const char *raw_data_;
-            size_t size_;
-            bool owned_;
+ private:
+  class VIter;
 
-            VertBlockMeta meta_;
-            const char *content_data_;
-        };
-    }  // namespace vert
+  const char* raw_data_;
+  size_t size_;
+  bool owned_;
+
+  VertBlockMeta meta_;
+  const char* content_data_;
+};
+}  // namespace vert
 }  // namespace leveldb
 
 #endif  // LEVELDB_VERT_BLOCK_H

@@ -37,7 +37,7 @@ namespace leveldb {
 
         Block &operator=(const Block &) = delete;
 
-        ~Block();
+        virtual ~Block() {}
 
         size_t size() const { return core_->size(); }
 

@@ -10,6 +10,9 @@ int main() {
   leveldb::Status status = leveldb::DB::Open(options, "/tmp/testdb", &db);
   assert(status.ok());
 
+  std::string key1;
+  std::string key2;
+
   std::string value;
   leveldb::Status s = db->Get(leveldb::ReadOptions(), key1, &value);
   if (s.ok()) s = db->Put(leveldb::WriteOptions(), key2, value);
