@@ -111,7 +111,7 @@ Slice VertBlockBuilder::Finish() {
   }
 
   // MAGIC
-  *(uint32_t*)(internal_buffer_ + meta_size + section_size) = MAGIC;
+  *((uint32_t*)(internal_buffer_ + meta_size + section_size)) = MAGIC;
 
   return Slice(internal_buffer_, buffer_size);
 }
@@ -127,7 +127,7 @@ size_t VertBlockBuilder::CurrentSizeEstimate() const {
   }
   // sizes of dumped sections
 
-  return meta_size + section_size_ + 4;
+  return meta_size + section_size + 4;
 }
 
 bool VertBlockBuilder::empty() const {
