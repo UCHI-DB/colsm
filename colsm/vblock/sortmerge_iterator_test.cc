@@ -2,15 +2,19 @@
 // Created by harper on 4/18/21.
 //
 
+#include "sortmerge_iterator.h"
+
 #include <gtest/gtest.h>
 #include <vector>
+
 #include "leveldb/iterator.h"
 #include "leveldb/slice.h"
-#include "sortmerge_iterator.h"
-#include "comparators.h"
+
+#include "colsm/comparators.h"
 
 using namespace std;
 using namespace leveldb;
+using namespace colsm;
 
 class IntIterator : public Iterator {
 protected:

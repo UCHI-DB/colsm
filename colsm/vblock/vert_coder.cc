@@ -8,8 +8,8 @@
 #include <sstream>
 #include <vector>
 
-namespace leveldb {
-namespace vert {
+using namespace leveldb;
+namespace colsm {
 
 class PlainEncoder : public Encoder {
  private:
@@ -166,5 +166,4 @@ Encoding& EncodingFactory::Get(Encodings encoding) {
       return plainEncoding;
   }
 }
-}  // namespace vert
-}  // namespace leveldb
+}  // namespace colsm

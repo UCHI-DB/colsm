@@ -12,8 +12,8 @@
 
 #include "vert_block.h"
 
-namespace leveldb {
-namespace vert {
+using namespace leveldb;
+namespace colsm {
 
 /**
  * Builder for building vertical blocks
@@ -64,6 +64,5 @@ class VertBlockBuilder : public BlockBuilder {
   void DumpSection();
 };
 
-}  // namespace vert
-}  // namespace leveldb
+}  // namespace colsm
 #endif  // LEVELDB_BLOCK_VERT_BUILDER_H

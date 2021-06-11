@@ -10,9 +10,10 @@
 #include "table/block.h"
 #include "table/block_builder.h"
 #include "table/format.h"
+
+#include "colsm/comparators.h"
 #include "vert_block.h"
 #include "vert_block_builder.h"
-#include "comparators.h"
 
 using namespace std;
 using namespace leveldb;

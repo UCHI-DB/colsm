@@ -6,12 +6,11 @@
 #define LEVELDB_COMPARATORS_H
 
 #include <memory>
+
 #include "leveldb/comparator.h"
 
-namespace leveldb {
-    namespace vert {
-        std::unique_ptr<Comparator> intComparator();
-    }
+namespace colsm {
+std::unique_ptr<leveldb::Comparator> intComparator();
 }
 
-#endif //LEVELDB_COMPARATORS_H
+#endif  // LEVELDB_COMPARATORS_H

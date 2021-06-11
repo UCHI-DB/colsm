@@ -12,7 +12,7 @@
 #include "vert_block_builder.h"
 
 using namespace leveldb;
-using namespace leveldb::vert;
+using namespace colsm;
 
 TEST(VertBlockMetaTest, Read) {
   char buffer[897];

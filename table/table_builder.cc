@@ -19,7 +19,7 @@
 namespace leveldb {
 
 struct TableBuilder::Rep {
-  Rep(const Options& opt, WritableFile* f)
+  Rep(const Options& opt, bool vformat, WritableFile* f)
       : options(opt),
         index_block_options(opt),
         file(f),
@@ -62,8 +62,8 @@ struct TableBuilder::Rep {
   std::string compressed_output;
 };
 
-TableBuilder::TableBuilder(const Options& options, WritableFile* file)
-    : rep_(new Rep(options, file)) {
+TableBuilder::TableBuilder(const Options& options, bool format, WritableFile* file)
+    : rep_(new Rep(options, format, file)) {
   if (rep_->filter_block != nullptr) {
     rep_->filter_block->StartBlock(0);
   }

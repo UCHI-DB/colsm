@@ -17,8 +17,8 @@
 
 #include "vert_coder.h"
 
-namespace leveldb {
-namespace vert {
+using namespace leveldb;
+namespace colsm {
 
 const uint32_t MAGIC = 0xCAAEDADE;
 
@@ -182,7 +182,6 @@ class VertBlockCore : public BlockCore {
   VertBlockMeta meta_;
   const char* content_data_;
 };
-}  // namespace vert
-}  // namespace leveldb
+}  // namespace colsm
 
 #endif  // LEVELDB_VERT_BLOCK_H

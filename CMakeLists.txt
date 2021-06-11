@@ -169,6 +169,10 @@ target_sources(leveldb
     "db/version_set.h"
     "db/write_batch_internal.h"
     "db/write_batch.cc"
+    "colsm/cost/cost_model.cc"
+    "colsm/cost/cost_model.h"
+    "colsm/data_block_builder.cc"
+    "colsm/data_block_builder.h"
     "port/port_stdcxx.h"
     "port/port.h"
     "port/thread_annotations.h"
@@ -188,16 +192,16 @@ target_sources(leveldb
     "table/table.cc"
     "table/two_level_iterator.cc"
     "table/two_level_iterator.h"
-    "table/vblock/vert_coder.cc"
-    "table/vblock/vert_coder.h"
-    "table/vblock/vert_block.cc"
-    "table/vblock/vert_block.h"
-    "table/vblock/vert_block_builder.cc"
-    "table/vblock/vert_block_builder.h"
-    "table/vblock/sortmerge_iterator.cc"
-    "table/vblock/sortmerge_iterator.h"
-    "table/vblock/comparators.cc"
-    "table/vblock/comparators.h"
+    "colsm/vblock/vert_coder.cc"
+    "colsm/vblock/vert_coder.h"
+    "colsm/vblock/vert_block.cc"
+    "colsm/vblock/vert_block.h"
+    "colsm/vblock/vert_block_builder.cc"
+    "colsm/vblock/vert_block_builder.h"
+    "colsm/vblock/sortmerge_iterator.cc"
+    "colsm/vblock/sortmerge_iterator.h"
+    "colsm/comparators.cc"
+    "colsm/comparators.h"
     "util/arena.cc"
     "util/arena.h"
     "util/bloom.cc"
@@ -323,7 +327,7 @@ target_link_libraries(leveldbutil leveldb)
 add_executable(leveldb_runner "colsm/runner.cc")
 target_link_libraries(leveldb_runner leveldb)
 
-add_executable(block_runner table/vblock/block_runner.cc)
+add_executable(block_runner colsm/vblock/block_runner.cc)
 target_link_libraries(block_runner PRIVATE leveldb)
 target_compile_options(block_runner PUBLIC ${SBOOST_SIMD_FLAGS})
 
@@ -404,8 +408,8 @@ if(LEVELDB_BUILD_TESTS)
 
     leveldb_test("table/filter_block_test.cc")
     leveldb_test("table/table_test.cc")
-    leveldb_test("table/vblock/vert_block_test.cc")
-    leveldb_test("table/vblock/sortmerge_iterator_test.cc")
+    leveldb_test("colsm/vblock/vert_block_test.cc")
+    leveldb_test("colsm/vblock/sortmerge_iterator_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")
@@ -441,8 +445,8 @@ if(LEVELDB_BUILD_BENCHMARKS)
     #target_compile_options(leveldb_block_benchmark PUBLIC "-O3")
   endfunction(colsm_benchmark)
 
-  colsm_benchmark(vert_block_read_benchmark table/vblock/vert_block_read_benchmark.cc)
-  colsm_benchmark(vert_block_merge_benchmark table/vblock/vert_block_merge_benchmark.cc)
+  colsm_benchmark(vert_block_read_benchmark colsm/vblock/vert_block_read_benchmark.cc)
+  colsm_benchmark(vert_block_merge_benchmark colsm/vblock/vert_block_merge_benchmark.cc)
 
 
   function(leveldb_benchmark bench_file)
