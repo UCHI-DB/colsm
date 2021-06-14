@@ -10,8 +10,7 @@
 #include "sboost.h"
 #include "unpacker.h"
 
-namespace leveldb {
-namespace vert {
+namespace colsm {
 
 int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
               uint32_t target) {
@@ -372,5 +371,4 @@ Iterator* VertBlockCore::NewIterator(const Comparator* comparator) {
   return new VIter(comparator, meta_, content_data_);
 }
 
-}  // namespace vert
-}  // namespace leveldb
+}  // namespace colsm

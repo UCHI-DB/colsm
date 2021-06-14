@@ -814,8 +814,8 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
   Status s = env_->NewWritableFile(fname, &compact->outfile);
   if (s.ok()) {
     auto level = compact->compaction->level();
-    options_.block_vert_format = cost_model_.ShouldVertical(level);
-    compact->builder = new TableBuilder(options_, compact->outfile);
+    compact->builder = new TableBuilder(
+        options_, colsm::CostModel::INSTANCE->ShouldVertical(level), compact->outfile);
   }
   return s;
 }

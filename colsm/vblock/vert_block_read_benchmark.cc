@@ -17,7 +17,7 @@
 
 using namespace std;
 using namespace leveldb;
-using namespace leveldb::vert;
+using namespace colsm;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 

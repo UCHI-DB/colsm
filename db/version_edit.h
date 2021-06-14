@@ -103,4 +103,4 @@ class VersionEdit {
 
 }  // namespace leveldb
 
-#endif  // STORAGE_LEVELDB_DB_VERSION_EDIT_H_
+#endif  // STORAGE_LEVELDB_DB_VERSION_EDIT_H_wzw265

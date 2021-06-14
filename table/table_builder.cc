@@ -10,6 +10,7 @@
 #include "leveldb/env.h"
 #include "leveldb/filter_policy.h"
 #include "leveldb/options.h"
+
 #include "table/block_builder.h"
 #include "table/filter_block.h"
 #include "table/format.h"
@@ -62,7 +63,11 @@ struct TableBuilder::Rep {
   std::string compressed_output;
 };
 
-TableBuilder::TableBuilder(const Options& options, bool format, WritableFile* file)
+TableBuilder::TableBuilder(const Options& options, WritableFile* file)
+    : TableBuilder(options, false, file) {}
+
+TableBuilder::TableBuilder(const Options& options, bool format,
+                           WritableFile* file)
     : rep_(new Rep(options, format, file)) {
   if (rep_->filter_block != nullptr) {
     rep_->filter_block->StartBlock(0);

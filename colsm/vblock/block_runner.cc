@@ -48,7 +48,7 @@ BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
 }
 
 BlockContents prepareVBlock(std::vector<int> &keys, int value_len, Encodings encoding) {
-    auto comparator = leveldb::vert::intComparator();
+    auto comparator = colsm::intComparator();
     uint32_t num_entry = keys.size();
     uint32_t intkey;
     char value_buffer[value_len];
@@ -72,7 +72,7 @@ BlockContents prepareVBlock(std::vector<int> &keys, int value_len, Encodings enc
 }
 
 void runVert() {
-    auto comparator = leveldb::vert::intComparator();
+    auto comparator = colsm::intComparator();
     vector<int32_t> key1;
     vector<int32_t> key2;
     for (int i = 0; i < 1000000; ++i) {
@@ -93,7 +93,7 @@ void runVert() {
 
     auto ite1 = block1.NewIterator(comparator.get());
     auto ite2 = block2.NewIterator(comparator.get());
-    auto ite = leveldb::vert::sortMergeIterator(comparator.get(), ite1, ite2);
+    auto ite = colsm::sortMergeIterator(comparator.get(), ite1, ite2);
     while (ite->Valid()) {
         ite->Next();
         builder.Add(ite->key(), ite->value());
@@ -126,7 +126,7 @@ void runHori() {
     auto ite2 = block2.NewIterator(leveldb::BytewiseComparator());
     ite1->SeekToFirst();
     ite2->SeekToFirst();
-    auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(), ite1, ite2);
+    auto ite = colsm::sortMergeIterator(leveldb::BytewiseComparator(), ite1, ite2);
 
     while (ite->Valid()) {
         builder.Add(ite->key(), ite->value());

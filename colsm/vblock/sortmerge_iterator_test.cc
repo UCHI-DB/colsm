@@ -80,9 +80,9 @@ TEST(TwoMergeIterator, Next) {
     IntIterator *left = new IntIterator(left_content);
     IntIterator *right = new IntIterator(right_content);
 
-    unique_ptr<Comparator> intcompare = vert::intComparator();
+    unique_ptr<Comparator> intcompare = colsm::intComparator();
 
-    Iterator *sm = leveldb::vert::sortMergeIterator(intcompare.get(), left, right);
+    Iterator *sm = colsm::sortMergeIterator(intcompare.get(), left, right);
 
     vector<int> buffer;
     sm->Next();

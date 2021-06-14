@@ -14,9 +14,10 @@
 #include "leveldb/comparator.h"
 
 #include "table/format.h"
-#include "table/vblock/vert_block.h"
 #include "util/coding.h"
 #include "util/logging.h"
+
+#include "colsm/vblock/vert_block.h"
 
 namespace leveldb {
 
@@ -25,8 +26,8 @@ Block::Block(const BlockContents& contents) {
   auto data_pointer = contents.data.data();
   auto data_length = contents.data.size();
   uint32_t last = *((uint32_t*)(data_pointer + data_length - 4));
-  if (last == leveldb::vert::MAGIC) {
-    core_ = std::unique_ptr<BlockCore>(new vert::VertBlockCore(contents));
+  if (last == colsm::MAGIC) {
+    core_ = std::unique_ptr<BlockCore>(new colsm::VertBlockCore(contents));
   } else {
     core_ = std::unique_ptr<BlockCore>(new BasicBlockCore(contents));
   }

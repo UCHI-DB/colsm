@@ -18,7 +18,7 @@
 
 using namespace std;
 using namespace leveldb;
-using namespace leveldb::vert;
+using namespace colsm;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
@@ -47,7 +47,7 @@ BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
 }
 
 BlockContents prepareVBlock(std::vector<int> &keys, int value_len, Encodings encoding) {
-    auto comparator = leveldb::vert::intComparator();
+    auto comparator = colsm::intComparator();
     uint32_t num_entry = keys.size();
     uint32_t intkey;
     char value_buffer[value_len];
@@ -97,7 +97,7 @@ key2.push_back(i*2+1);
         auto ite2 = block2.NewIterator(leveldb::BytewiseComparator());
         ite1->SeekToFirst();
         ite2->SeekToFirst();
-        auto ite = leveldb::vert::sortMergeIterator(leveldb::BytewiseComparator(), ite1, ite2);
+        auto ite = colsm::sortMergeIterator(leveldb::BytewiseComparator(), ite1, ite2);
 
         while (ite->Valid()) {
             builder.Add(ite->key(), ite->value());
@@ -115,7 +115,7 @@ key2.push_back(i*2+1);
 void VBlockMergeWithNoOverlap(benchmark::State &state) {
     vector<int32_t> key1;
     vector<int32_t> key2;
-    auto comparator = leveldb::vert::intComparator();
+    auto comparator = colsm::intComparator();
     for (int i = 0; i < 1000000; ++i) {
         key1.push_back(i*2);
         key2.push_back(i*2+1);
@@ -135,7 +135,7 @@ void VBlockMergeWithNoOverlap(benchmark::State &state) {
 
         auto ite1 = block1.NewIterator(comparator.get());
         auto ite2 = block2.NewIterator(comparator.get());
-        auto ite = leveldb::vert::sortMergeIterator(comparator.get(), ite1, ite2);
+        auto ite = colsm::sortMergeIterator(comparator.get(), ite1, ite2);
         while (ite->Valid()) {
             builder.Add(ite->key(), ite->value());
             ite->Next();

@@ -6,8 +6,7 @@
 
 #include "table/format.h"
 
-namespace leveldb {
-namespace vert {
+namespace colsm {
 
 //
 // VertBlockBuilder generate blocks that are columnar encoded
@@ -135,5 +134,4 @@ bool VertBlockBuilder::empty() const {
          (current_section_ == nullptr || current_section_->NumEntry() == 0);
 }
 
-}  // namespace vert
-}  // namespace leveldb
+}  // namespace colsm

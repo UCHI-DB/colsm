@@ -8,9 +8,12 @@
 #include "db/filename.h"
 #include "db/table_cache.h"
 #include "db/version_edit.h"
+
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/iterator.h"
+
+#include "colsm/cost/cost_model.h"
 
 namespace leveldb {
 
@@ -28,7 +31,9 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
       return s;
     }
 
-    TableBuilder* builder = new TableBuilder(options, file);
+    // Only writing level 0 will call this function
+    TableBuilder* builder = new TableBuilder(
+        options, colsm::CostModel::INSTANCE->ShouldVertical(0), file);
     meta->smallest.DecodeFrom(iter->key());
     Slice key;
     for (; iter->Valid(); iter->Next()) {

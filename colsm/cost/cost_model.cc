@@ -6,6 +6,11 @@
 
 namespace colsm {
 
+CostModel::CostModel() {}
+
+std::unique_ptr<CostModel> CostModel::INSTANCE =
+    std::unique_ptr<CostModel>(new CostModel());
+
 bool CostModel::ShouldVertical(int level) { return true; }
 
 }  // namespace colsm
