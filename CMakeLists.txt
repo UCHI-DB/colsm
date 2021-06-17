@@ -190,8 +190,8 @@ target_sources(leveldb
     "table/two_level_iterator.h"
     "colsm/cost/cost_model.cc"
     "colsm/cost/cost_model.h"
-    "colsm/data_block_builder.cc"
-    "colsm/data_block_builder.h"
+    "colsm/datablock_builder.cc"
+    "colsm/datablock_builder.h"
     "colsm/vblock/vert_coder.cc"
     "colsm/vblock/vert_coder.h"
     "colsm/vblock/vert_block.cc"
@@ -410,6 +410,7 @@ if(LEVELDB_BUILD_TESTS)
     leveldb_test("table/table_test.cc")
     leveldb_test("colsm/vblock/vert_block_test.cc")
     leveldb_test("colsm/vblock/sortmerge_iterator_test.cc")
+    leveldb_test("colsm/datablock_builder_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")

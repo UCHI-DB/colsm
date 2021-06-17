@@ -5,6 +5,7 @@
 #include "leveldb/table_builder.h"
 
 #include <cassert>
+#include <memory>
 
 #include "leveldb/comparator.h"
 #include "leveldb/env.h"
@@ -17,6 +18,10 @@
 #include "util/coding.h"
 #include "util/crc32c.h"
 
+#include "colsm/vblock/vert_block_builder.h"
+
+using namespace colsm;
+
 namespace leveldb {
 
 struct TableBuilder::Rep {
@@ -25,7 +30,6 @@ struct TableBuilder::Rep {
         index_block_options(opt),
         file(f),
         offset(0),
-        data_block(&options),
         index_block(&index_block_options),
         num_entries(0),
         closed(false),
@@ -34,6 +38,12 @@ struct TableBuilder::Rep {
                          : new FilterBlockBuilder(opt.filter_policy)),
         pending_index_entry(false) {
     index_block_options.block_restart_interval = 1;
+    if (vformat) {
+      data_block =
+          std::unique_ptr<BlockBuilder>(new VertBlockBuilder(&options));
+    } else {
+      data_block = std::unique_ptr<BlockBuilder>(new BlockBuilder(&options));
+    }
   }
 
   Options options;
@@ -41,7 +51,7 @@ struct TableBuilder::Rep {
   WritableFile* file;
   uint64_t offset;
   Status status;
-  BlockBuilder data_block;
+  std::unique_ptr<BlockBuilder> data_block;
   BlockBuilder index_block;
   std::string last_key;
   int64_t num_entries;
@@ -105,7 +115,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   }
 
   if (r->pending_index_entry) {
-    assert(r->data_block.empty());
+    assert(r->data_block->empty());
     r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
     r->pending_handle.EncodeTo(&handle_encoding);
@@ -119,9 +129,9 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
 
   r->last_key.assign(key.data(), key.size());
   r->num_entries++;
-  r->data_block.Add(key, value);
+  r->data_block->Add(key, value);
 
-  const size_t estimated_block_size = r->data_block.CurrentSizeEstimate();
+  const size_t estimated_block_size = r->data_block->CurrentSizeEstimate();
   if (estimated_block_size >= r->options.block_size) {
     Flush();
   }
@@ -131,9 +141,9 @@ void TableBuilder::Flush() {
   Rep* r = rep_;
   assert(!r->closed);
   if (!ok()) return;
-  if (r->data_block.empty()) return;
+  if (r->data_block->empty()) return;
   assert(!r->pending_index_entry);
-  WriteBlock(&r->data_block, &r->pending_handle);
+  WriteBlock(r->data_block.get(), &r->pending_handle);
   if (ok()) {
     r->pending_index_entry = true;
     r->status = r->file->Flush();
