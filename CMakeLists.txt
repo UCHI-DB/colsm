@@ -190,8 +190,6 @@ target_sources(leveldb
     "table/two_level_iterator.h"
     "colsm/cost/cost_model.cc"
     "colsm/cost/cost_model.h"
-    "colsm/datablock_builder.cc"
-    "colsm/datablock_builder.h"
     "colsm/vblock/vert_coder.cc"
     "colsm/vblock/vert_coder.h"
     "colsm/vblock/vert_block.cc"
@@ -331,6 +329,10 @@ add_executable(block_runner colsm/vblock/block_runner.cc)
 target_link_libraries(block_runner PRIVATE leveldb)
 target_compile_options(block_runner PUBLIC ${SBOOST_SIMD_FLAGS})
 
+add_executable(colsm_table_printer colsm/tool/table_printer.cc)
+target_link_libraries(colsm_table_printer PRIVATE leveldb)
+target_compile_options(colsm_table_printer PUBLIC ${SBOOST_SIMD_FLAGS})
+
 if(LEVELDB_BUILD_TESTS)
   enable_testing()
 
@@ -410,7 +412,6 @@ if(LEVELDB_BUILD_TESTS)
     leveldb_test("table/table_test.cc")
     leveldb_test("colsm/vblock/vert_block_test.cc")
     leveldb_test("colsm/vblock/sortmerge_iterator_test.cc")
-    leveldb_test("colsm/datablock_builder_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")
