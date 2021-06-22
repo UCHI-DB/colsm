@@ -106,9 +106,9 @@ Slice VertBlockBuilder::Finish() {
   auto pointer = internal_buffer_ + meta_size;
 
   for (auto& sec : section_buffer_) {
-    assert(pointer - internal_buffer_ + sec->EstimateSize() < buffer_size);
+    auto sec_size = sec->EstimateSize();
     sec->Dump(pointer);
-    pointer += sec->EstimateSize();
+    pointer += sec_size;
   }
 
   // MAGIC
