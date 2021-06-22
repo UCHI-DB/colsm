@@ -182,7 +182,9 @@ void VertSection::Dump(char* out) {
   // Write encoding type
   *(pointer++) = encoding_enum_;
   value_encoder_->Dump(reinterpret_cast<uint8_t*>(pointer));
+
   delete value_encoder_;
+  value_encoder_ = nullptr;
 }
 
 void VertSection::Read(const char* in) {

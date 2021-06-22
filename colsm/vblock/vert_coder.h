@@ -16,6 +16,8 @@ namespace encoding {}
 
 class Encoder {
  public:
+  virtual ~Encoder() = default;
+
   virtual void Encode(const Slice&) = 0;
 
   virtual void Close() = 0;
@@ -27,6 +29,8 @@ class Encoder {
 
 class Decoder {
  public:
+  virtual ~Decoder() = default;
+
   virtual void Attach(const uint8_t*) = 0;
 
   // Move forward by records

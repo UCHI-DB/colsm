@@ -80,6 +80,7 @@ void VertBlockBuilder::Reset() {
   for (auto& sec : section_buffer_) {
     delete sec;
   }
+  section_buffer_.clear();
   if (current_section_ != NULL) {
     delete current_section_;
     current_section_ = NULL;
@@ -105,6 +106,7 @@ Slice VertBlockBuilder::Finish() {
   auto pointer = internal_buffer_ + meta_size;
 
   for (auto& sec : section_buffer_) {
+    assert(pointer - internal_buffer_ + sec->EstimateSize() < buffer_size);
     sec->Dump(pointer);
     pointer += sec->EstimateSize();
   }

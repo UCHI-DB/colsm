@@ -14,7 +14,7 @@
 using namespace leveldb;
 using namespace colsm;
 
-TEST(VertBlockMetaTest, Read) {
+TEST(VertBlockMeta, Read) {
   char buffer[897];
   memset(buffer, 0, 897);
 
@@ -38,7 +38,7 @@ TEST(VertBlockMetaTest, Read) {
   EXPECT_EQ(897, meta.EstimateSize());
 }
 
-TEST(VertBlockMetaTest, Write) {
+TEST(VertBlockMeta, Write) {
   VertBlockMeta meta;
   for (int i = 0; i < 100; ++i) {
     meta.AddSection(2 * i, i + 300);
@@ -74,7 +74,7 @@ TEST(VertBlockMetaTest, Write) {
   }
 }
 
-TEST(VertBlockMetaTest, Search) {
+TEST(VertBlockMeta, Search) {
   char buffer[897];
   memset(buffer, 0, 897);
 
@@ -104,7 +104,7 @@ TEST(VertBlockMetaTest, Search) {
   EXPECT_EQ(750, meta.Search(392));  // 15 in entrie
 }
 
-TEST(VertSectionTest, Write) {
+TEST(VertSection, Write) {
   VertSection section(Encodings::PLAIN);
   char v[4];
   Slice value(v, 4);  // Dummy
@@ -144,7 +144,7 @@ TEST(VertSectionTest, Write) {
   }
 }
 
-TEST(VertSectionTest, Read) {
+TEST(VertSection, Read) {
   char buffer[113];
   memset(buffer, 0, 113);
   auto pointer = buffer;
@@ -170,7 +170,7 @@ TEST(VertSectionTest, Read) {
   EXPECT_EQ((const uint8_t*)pointer, section.KeysData());
 }
 
-TEST(VertSectionTest, Find) {
+TEST(VertSection, Find) {
   char buffer[113];
   memset(buffer, 0, 113);
   auto pointer = buffer;
@@ -196,7 +196,7 @@ TEST(VertSectionTest, Find) {
   EXPECT_EQ(-1, section.Find(329));
 }
 
-TEST(VertSectionTest, FindStart) {
+TEST(VertSection, FindStart) {
   char buffer[113];
   memset(buffer, 0, 113);
   auto pointer = buffer;
@@ -220,6 +220,10 @@ TEST(VertSectionTest, FindStart) {
   EXPECT_EQ(62, section.FindStart(358));
   // Next is 330, diff is 96, location is 48
   EXPECT_EQ(48, section.FindStart(329));
+}
+
+TEST(VertSection, Dump) {
+
 }
 
 class VertBlockMetaForTest : public VertBlockMeta {

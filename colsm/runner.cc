@@ -2,8 +2,10 @@
 // Created by Harper on 5/14/21.
 //
 #include <cassert>
+#include <iostream>
 #include <leveldb/db.h>
 #include <leveldb/filter_policy.h>
+
 #include "colsm/comparators.h"
 int main() {
   auto intCompare = colsm::intComparator();
@@ -17,13 +19,23 @@ int main() {
   leveldb::Status status = leveldb::DB::Open(options, "/tmp/testdb", &db);
   assert(status.ok());
 
-  std::string key1;
-  std::string key2;
-
-  std::string value;
-  leveldb::Status s = db->Get(leveldb::ReadOptions(), key1, &value);
-  if (s.ok()) s = db->Put(leveldb::WriteOptions(), key2, value);
-  if (s.ok()) s = db->Delete(leveldb::WriteOptions(), key1);
+//  int intkey;
+//  std::string strvalue = "demo value";
+//
+//  leveldb::Slice key((const char*)&intkey, 4);
+//  leveldb::Slice value(strvalue.data(), strvalue.size());
+//
+//  leveldb::Status s;
+//
+//  for (int i = 0; i < 10000000; ++i) {
+//    intkey = i;
+//    if (s.ok()) {
+//      s = db->Put(leveldb::WriteOptions(), key, value);
+//    } else {
+//      std::cerr << "Write failure" << '\n';
+//      break;
+//    }
+//  }
 
   delete options.filter_policy;
 }

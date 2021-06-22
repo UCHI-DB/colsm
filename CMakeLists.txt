@@ -18,6 +18,7 @@ set(CXX_FLAGS_FASTDEBUG "-ggdb -O1")
 set(C_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 
 # C standard can be overridden when this is used as a sub-project.
 if(NOT CMAKE_C_STANDARD)
@@ -412,6 +413,7 @@ if(LEVELDB_BUILD_TESTS)
     leveldb_test("table/table_test.cc")
     leveldb_test("colsm/vblock/vert_block_test.cc")
     leveldb_test("colsm/vblock/sortmerge_iterator_test.cc")
+    leveldb_test("colsm/vblock/vert_block_builder_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")
