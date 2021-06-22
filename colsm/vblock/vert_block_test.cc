@@ -5,6 +5,7 @@
 #include "vert_block.h"
 
 #include <gtest/gtest.h>
+#include <immintrin.h>
 
 #include "table/block.h"
 
@@ -222,8 +223,20 @@ TEST(VertSection, FindStart) {
   EXPECT_EQ(48, section.FindStart(329));
 }
 
-TEST(VertSection, Dump) {
+TEST(VertSection, EstimateSize) {
+  VertSection section(Encodings::PLAIN);
+  section.StartValue(0);
+  std::string strvalue = "it is a good day";
+  Slice value(strvalue.data(), strvalue.size());
+  for (int i = 0; i < 1000; ++i) {
+    section.Add(i, value);
 
+    int bitwidth = 32 - _lzcnt_u32(i);
+    int expected_value_size = (i + 1) * (4 + strvalue.size());
+    int bitpack_size = (bitwidth * (i + 1) + 63) >> 6 << 3;
+
+    EXPECT_EQ(10 + bitpack_size + expected_value_size, section.EstimateSize());
+  }
 }
 
 class VertBlockMetaForTest : public VertBlockMeta {

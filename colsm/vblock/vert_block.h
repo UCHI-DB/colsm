@@ -85,7 +85,6 @@ class VertSection {
   uint32_t num_entry_;
   int32_t start_value_;
   uint8_t bit_width_;
-  uint32_t estimated_size_;
 
   bool reading_;
 
@@ -129,7 +128,7 @@ class VertSection {
   //
   // Functions for writer mode
   //
-  void Add(int32_t key, const Slice& value);
+  void Add(uint32_t key, const Slice& value);
 
   uint32_t EstimateSize();
 

@@ -134,8 +134,7 @@ void VertBlockMeta::Write(char* out) {
   //  memcpy(pointer, starts_, (start_bitwidth_ * num_section_ + 7) >> 3);
 }
 
-VertSection::VertSection()
-    : num_entry_(0), estimated_size_(0), reading_(true) {}
+VertSection::VertSection() : num_entry_(0), reading_(true) {}
 
 VertSection::VertSection(const Encodings& enc) : VertSection() {
   reading_ = false;
@@ -148,7 +147,7 @@ VertSection::~VertSection() {
   if (reading_) delete value_decoder_;
 }
 
-void VertSection::Add(int32_t key, const Slice& value) {
+void VertSection::Add(uint32_t key, const Slice& value) {
   num_entry_++;
   keys_plain_.push_back(key - start_value_);
 
@@ -156,13 +155,8 @@ void VertSection::Add(int32_t key, const Slice& value) {
 }
 
 uint32_t VertSection::EstimateSize() {
-  if (estimated_size_ != 0) {
-    return estimated_size_;
-  }
-  num_entry_ = keys_plain_.size();
   bit_width_ = 32 - _lzcnt_u32(keys_plain_[num_entry_ - 1]);
-  estimated_size_ = 10 + BitPackSize() + value_encoder_->EstimateSize();
-  return estimated_size_;
+  return 10 + BitPackSize() + value_encoder_->EstimateSize();
 }
 
 void VertSection::Close() { value_encoder_->Close(); }
@@ -203,9 +197,6 @@ void VertSection::Read(const char* in) {
   value_decoder_ = value_encoding_->decoder();
 
   value_decoder_->Attach(reinterpret_cast<const uint8_t*>(pointer));
-  // Recompute estimated size
-  // TODO Temporarily ignoring value size here as we do not store it
-  estimated_size_ = 9 + BitPackSize();
 }
 
 int32_t VertSection::Find(int32_t target) {
