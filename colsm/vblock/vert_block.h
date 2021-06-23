@@ -19,6 +19,7 @@
 
 using namespace leveldb;
 namespace colsm {
+using namespace encoding;
 
 const uint32_t MAGIC = 0xCAAEDADE;
 

@@ -71,7 +71,7 @@ void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
     current_section_->StartValue(intkey);
   }
   current_section_->Add(intkey, value);
-  if (current_section_->NumEntry() >= section_size_) {
+  if (current_section_->NumEntry() >= section_limit_) {
     DumpSection();
   }
 }

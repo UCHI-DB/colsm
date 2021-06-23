@@ -4,7 +4,9 @@
 
 #include "vert_coder.h"
 
+#include <byteutils.h>
 #include <cstring>
+#include <immintrin.h>
 #include <sstream>
 #include <vector>
 
@@ -229,16 +231,16 @@ class PlainEncoder : public Encoder {
 
 class PlainDecoder : public Decoder {
  private:
-  uint8_t* raw_pointer_;
+  uint64_t* raw_pointer_;
 
  public:
   void Attach(const uint8_t* buffer) override {
-    raw_pointer_ = (uint8_t*)buffer;
+    raw_pointer_ = (uint64_t*)buffer;
   }
 
-  void Skip(uint32_t offset) override { raw_pointer_ += 8 * offset; }
+  void Skip(uint32_t offset) override { raw_pointer_ += offset; }
 
-  uint64_t DecodeU64() override { return read64(raw_pointer_); }
+  uint64_t DecodeU64() override { return *(raw_pointer_++); }
 };
 
 EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
@@ -272,39 +274,65 @@ class PlainEncoder : public Encoder {
 
 class PlainDecoder : public Decoder {
  private:
-  uint8_t* raw_pointer_;
+  uint32_t* raw_pointer_;
 
  public:
   void Attach(const uint8_t* buffer) override {
-    raw_pointer_ = (uint8_t*)buffer;
+    raw_pointer_ = (uint32_t*)buffer;
   }
 
-  void Skip(uint32_t offset) override { raw_pointer_ += 4 * offset; }
+  void Skip(uint32_t offset) override { raw_pointer_ += offset; }
 
-  uint32_t DecodeU32() override { return read32(raw_pointer_); }
+  uint32_t DecodeU32() override { return *(raw_pointer_++); }
 };
+
 class BitpackEncoder : public Encoder {
+ private:
+  std::vector<uint32_t> buffer_;
+
  public:
-  void Encode(const Slice& entry) override {}
+  void Encode(const uint32_t& value) override { buffer_.push_back(value); }
 
-  void Encode(const uint32_t& entry) override {}
-
-  uint32_t EstimateSize() override { return 0; }
+  uint32_t EstimateSize() override {
+    uint32_t bit_width = 32 - _lzcnt_u32(buffer_.back());
+    return 1 + (bit_width * buffer_.size() + 63) >> 6 << 3;
+  }
 
   void Close() override {}
 
-  void Dump(uint8_t* output) override {}
+  void Dump(uint8_t* output) override {
+    uint8_t bit_width = 32 - _lzcnt_u32(buffer_.back());
+    *(output) = bit_width;
+    sboost::byteutils::bitpack(buffer_.data(), buffer_.size(), bit_width,
+                               output + 1);
+  }
 };
 
 class BitpackDecoder : public Decoder {
+ private:
+  uint64_t* pointer_;
+  uint8_t offset_;
+  uint8_t bit_width_;
+
  public:
-  void Attach(const uint8_t* buffer) override {}
+  void Attach(const uint8_t* buffer) override {
+    bit_width_ = *(buffer + 1);
+    pointer_ = (uint64_t*)(buffer + 1);
+    offset_ = 0;
+  }
 
-  void Skip(uint32_t offset) override {}
+  void Skip(uint32_t offset) override {
+    offset_ += bit_width_ * offset;
+    pointer_ += offset >> 6;
+    offset_ &= 0x3F;
+  }
 
-  Slice Decode() override { return Slice(0, 0); }
-
-  uint32_t DecodeU32() override { return 0; }
+  uint32_t DecodeU32() override {
+    uint32_t result = *(pointer_) << offset_;
+    offset_ += bit_width_;
+    pointer_ += offset_ >> 6;
+    offset_ &= 0x3F;
+  }
 };
 
 EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
@@ -501,7 +529,6 @@ class RleVarIntDecoder : public Decoder {
 };
 
 EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
-
 EncodingTemplate<RleEncoder, RleDecoder> rleEncoding;
 EncodingTemplate<RleVarIntEncoder, RleVarIntDecoder> rleVarEncoding;
 

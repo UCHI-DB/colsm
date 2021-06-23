@@ -414,6 +414,7 @@ if(LEVELDB_BUILD_TESTS)
     leveldb_test("colsm/vblock/vert_block_test.cc")
     leveldb_test("colsm/vblock/sortmerge_iterator_test.cc")
     leveldb_test("colsm/vblock/vert_block_builder_test.cc")
+    leveldb_test("colsm/vblock/vert_coder_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")
