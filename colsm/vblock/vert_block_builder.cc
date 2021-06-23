@@ -37,7 +37,7 @@ namespace colsm {
 
 VertBlockBuilder::VertBlockBuilder(const Options* options)
     : BlockBuilder(options),
-      section_size_(128),
+      section_limit_(128),
       offset_(0),
       current_section_(NULL),
       internal_buffer_(NULL) {}
