@@ -12,7 +12,7 @@
 using namespace leveldb;
 namespace colsm {
 
-namespace encoding {}
+namespace encoding {
 
 class Encoder {
  public:
@@ -66,14 +66,39 @@ enum Encodings {
   LENGTH,
   // For numbers
   BITPACK,
-  RL8,
+  RUNLENGTH,
   DELTA
 };
 
+namespace string {
 class EncodingFactory {
  public:
   static Encoding& Get(Encodings);
 };
+}  // namespace string
+
+namespace u64 {
+class EncodingFactory {
+ public:
+  static Encoding& Get(Encodings);
+};
+}  // namespace u64
+
+namespace u32 {
+class EncodingFactory {
+ public:
+  static Encoding& Get(Encodings);
+};
+}  // namespace u32
+
+namespace u8 {
+class EncodingFactory {
+ public:
+  static Encoding& Get(Encodings);
+};
+}  // namespace u8
+
+}  // namespace encoding
 }  // namespace colsm
 
 #endif  // LEVELDB_VERT_CODER_H

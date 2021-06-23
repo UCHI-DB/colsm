@@ -12,6 +12,8 @@
 
 namespace colsm {
 
+using namespace encoding;
+
 int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
               uint32_t target) {
   uint32_t mask = (1 << bitwidth) - 1;
@@ -139,7 +141,7 @@ VertSection::VertSection() : num_entry_(0), reading_(true) {}
 VertSection::VertSection(const Encodings& enc) : VertSection() {
   reading_ = false;
   encoding_enum_ = enc;
-  value_encoding_ = &EncodingFactory::Get(enc);
+  value_encoding_ = &string::EncodingFactory::Get(enc);
   value_encoder_ = value_encoding_->encoder();
 }
 
@@ -193,7 +195,7 @@ void VertSection::Read(const char* in) {
 
   // Read encoding type
   auto enc_type = static_cast<Encodings>(*(pointer++));
-  value_encoding_ = &EncodingFactory::Get(enc_type);
+  value_encoding_ = &string::EncodingFactory::Get(enc_type);
   value_decoder_ = value_encoding_->decoder();
 
   value_decoder_->Attach(reinterpret_cast<const uint8_t*>(pointer));
