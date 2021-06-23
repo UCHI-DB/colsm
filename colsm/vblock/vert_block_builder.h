@@ -50,7 +50,7 @@ class VertBlockBuilder : public BlockBuilder {
   bool empty() const;
 
  private:
-  uint32_t section_size_;
+  uint32_t section_limit_;
 
   VertBlockMeta meta_;
   std::vector<VertSection*> section_buffer_;

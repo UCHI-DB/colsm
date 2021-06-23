@@ -15,7 +15,7 @@
 using namespace std;
 using namespace leveldb;
 // using namespace colsm;
-
+/*
 Status LocalReadBlock(RandomAccessFile* file, const ReadOptions& options,
                       const BlockHandle& handle, BlockContents* result) {
   result->data = Slice();
@@ -91,7 +91,7 @@ Status LocalReadBlock(RandomAccessFile* file, const ReadOptions& options,
   }
 
   return Status::OK();
-}
+}*/
 
 unique_ptr<FilterBlockReader> ReadFilter(const Options& options,
                                          RandomAccessFile* file,
