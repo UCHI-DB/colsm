@@ -298,7 +298,7 @@ class BitpackEncoder : public Encoder {
 
   uint32_t EstimateSize() override {
     uint32_t bit_width = 32 - _lzcnt_u32(buffer_.back());
-    return 1 + (bit_width * buffer_.size() + 63) >> 6 << 3;
+    return 1 + ((bit_width * buffer_.size() + 63) >> 6 << 3);
   }
 
   void Close() override {}
@@ -316,12 +316,14 @@ class BitpackDecoder : public Decoder {
   uint64_t* pointer_;
   uint8_t offset_;
   uint8_t bit_width_;
+  uint32_t mask_;
 
  public:
   void Attach(const uint8_t* buffer) override {
-    bit_width_ = *(buffer + 1);
+    bit_width_ = *buffer;
     pointer_ = (uint64_t*)(buffer + 1);
     offset_ = 0;
+    mask_ = (1u << bit_width_) - 1;
   }
 
   void Skip(uint32_t offset) override {
@@ -331,10 +333,15 @@ class BitpackDecoder : public Decoder {
   }
 
   uint32_t DecodeU32() override {
-    uint32_t result = *(pointer_) << offset_;
+    uint32_t result = (*(pointer_) >> offset_) & mask_;
     offset_ += bit_width_;
-    pointer_ += offset_ >> 6;
-    offset_ &= 0x3F;
+    if (offset_ >= 64) {
+      auto overflow = offset_ - 64;
+      offset_ &= 0x3F;
+      pointer_ += 1;
+      result += (*(pointer_) & ((1UL << overflow) - 1))
+                << (bit_width_ - offset_);
+    }
     return result;
   }
 };
