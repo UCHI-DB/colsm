@@ -202,7 +202,7 @@ EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
 
 EncodingTemplate<LengthEncoder, LengthDecoder> lengthEncoding;
 
-Encoding& EncodingFactory::Get(Encodings encoding) {
+Encoding& EncodingFactory::Get(EncodingType encoding) {
   switch (encoding) {
     case PLAIN:
       return plainEncoding;
@@ -248,7 +248,7 @@ class PlainDecoder : public Decoder {
 
 EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
 
-Encoding& EncodingFactory::Get(Encodings encoding) {
+Encoding& EncodingFactory::Get(EncodingType encoding) {
   switch (encoding) {
     case PLAIN:
       return plainEncoding;
@@ -349,7 +349,7 @@ class BitpackDecoder : public Decoder {
 EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
 EncodingTemplate<BitpackEncoder, BitpackDecoder> bitpackEncoding;
 
-Encoding& EncodingFactory::Get(Encodings encoding) {
+Encoding& EncodingFactory::Get(EncodingType encoding) {
   switch (encoding) {
     case PLAIN:
       return plainEncoding;
@@ -543,7 +543,7 @@ EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
 EncodingTemplate<RleEncoder, RleDecoder> rleEncoding;
 EncodingTemplate<RleVarIntEncoder, RleVarIntDecoder> rleVarEncoding;
 
-Encoding& EncodingFactory::Get(Encodings encoding) {
+Encoding& EncodingFactory::Get(EncodingType encoding) {
   switch (encoding) {
     case PLAIN:
       return plainEncoding;

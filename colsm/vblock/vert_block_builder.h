@@ -1,11 +1,37 @@
 //
 // Created by harper on 12/9/20.
 //
+//
+// VertBlockBuilder generate blocks that are columnar encoded
+//
+// A vertical block consists of two data columns, the keys and the values.
+// As the entries are sorted by keys, we split the columns into blocks by key
+// and bit-pack them. The data format is as following:
+//
+//    data:      metadata
+//               sections {num_section}
+//               MAGIC
+//    metadata:  num_section    : uint32_t
+//               section_offsets: uint64_t{num_section}
+//               start_min      : int32_t
+//               start_bitwidth : uint8_t
+//               starts         : bit-packed uint32_t
+//    section:   num_entry      : uint32_t
+//               bit_width      : uint8_t
+//               keys {num_entry}
+//               values {num_entry}
+//
+//  We temporarily put metadata in header. Later this should be put in footer
+//  for writing big files.
+
+//  The value column can be encoded with any valid encoding that supports
+//  fast skipping. For now we just use plain encoding
 
 #ifndef LEVELDB_BLOCK_VERT_BUILDER_H
 #define LEVELDB_BLOCK_VERT_BUILDER_H
 
 #include <cstdint>
+#include <db/dbformat.h>
 #include <vector>
 
 #include "table/block_builder.h"
@@ -15,12 +41,41 @@
 using namespace leveldb;
 namespace colsm {
 
+class VertSectionBuilder {
+ private:
+  uint32_t num_entry_;
+  int32_t start_value_;
+  EncodingType value_enc_type_;
+
+  std::unique_ptr<Encoder> key_encoder_;
+  std::unique_ptr<Encoder> seq_encoder_;
+  std::unique_ptr<Encoder> type_encoder_;
+  std::unique_ptr<Encoder> value_encoder_;
+
+ public:
+  VertSectionBuilder(EncodingType& enc_type, int32_t);
+
+  int32_t StartValue() const { return start_value_; }
+
+  void StartValue(int32_t sv) { start_value_ = sv; }
+
+  void Add(ParsedInternalKey key, const Slice& value);
+
+  uint32_t NumEntry() const { return num_entry_; }
+
+  uint32_t EstimateSize();
+
+  void Close();
+
+  void Dump(uint8_t*);
+};
+
 /**
  * Builder for building vertical blocks
  */
 class VertBlockBuilder : public BlockBuilder {
  public:
-  Encodings encoding_ = Encodings::PLAIN;
+  EncodingType value_encoding_ = EncodingType::PLAIN;
 
   explicit VertBlockBuilder(const Options* options);
 
@@ -28,7 +83,7 @@ class VertBlockBuilder : public BlockBuilder {
 
   VertBlockBuilder& operator=(const VertBlockBuilder&) = delete;
 
-  virtual ~VertBlockBuilder();
+  virtual ~VertBlockBuilder() = default;
 
   // Reset the contents as if the BlockBuilder was just constructed.
   void Reset();
@@ -53,13 +108,13 @@ class VertBlockBuilder : public BlockBuilder {
   uint32_t section_limit_;
 
   VertBlockMeta meta_;
-  std::vector<VertSection*> section_buffer_;
+  std::vector<std::unique_ptr<VertSectionBuilder>> section_buffer_;
 
   uint64_t offset_;
 
-  VertSection* current_section_;
+  std::vector<uint8_t> buffer_;
 
-  char* internal_buffer_;
+  std::unique_ptr<VertSectionBuilder> current_section_ = nullptr;
 
   void DumpSection();
 };

@@ -4,55 +4,66 @@
 
 #include "vert_block_builder.h"
 
-#include "table/format.h"
 #include "db/dbformat.h"
+
+#include "table/format.h"
 
 namespace colsm {
 
-//
-// VertBlockBuilder generate blocks that are columnar encoded
-//
-// A vertical block consists of two data columns, the keys and the values.
-// As the entries are sorted by keys, we split the columns into blocks by key
-// and bit-pack them. The data format is as following:
-//
-//    data:      metadata
-//               sections {num_section}
-//               MAGIC
-//    metadata:  num_section    : uint32_t
-//               section_offsets: uint64_t{num_section}
-//               start_min      : int32_t
-//               start_bitwidth : uint8_t
-//               starts         : bit-packed uint32_t
-//    section:   num_entry      : uint32_t
-//               bit_width      : uint8_t
-//               keys {num_entry}
-//               values {num_entry}
-//
-//  We temporarily put metadata in header. Later this should be put in footer
-//  for writing big files.
+VertSectionBuilder::VertSectionBuilder(EncodingType& enc_type,
+                                       int32_t start_value)
+    : value_enc_type_(value_enc_type_), start_value_(start_value) {
+  key_encoder_ = u32::EncodingFactory::Get(BITPACK).encoder();
+  seq_encoder_ = u64::EncodingFactory::Get(PLAIN).encoder();
+  type_encoder_ = u8::EncodingFactory::Get(RUNLENGTH).encoder();
 
-//  The value column can be encoded with any valid encoding that supports
-//  fast skipping. For now we just use plain encoding
+  Encoding& encoding = string::EncodingFactory::Get(enc_type);
+  value_encoder_ = encoding.encoder();
+}
+
+void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
+  num_entry_++;
+
+  key_encoder_->Encode(
+      (uint32_t)(*(int32_t*)(key.user_key.data()) - start_value_));
+  seq_encoder_->Encode(key.sequence);
+  type_encoder_->Encode((uint8_t)key.type);
+  value_encoder_->Encode(value);
+}
+
+uint32_t VertSectionBuilder::EstimateSize() {
+  return 9 + key_encoder_->EstimateSize() + seq_encoder_->EstimateSize() +
+         type_encoder_->EstimateSize() + value_encoder_->EstimateSize();
+}
+
+void VertSectionBuilder::Close() {
+  key_encoder_->Close();
+  seq_encoder_->Close();
+  type_encoder_->Close();
+  value_encoder_->Close();
+}
+
+void VertSectionBuilder::Dump(uint8_t* out) {
+  uint8_t* pointer = (uint8_t*)out;
+  *reinterpret_cast<uint32_t*>(pointer) = num_entry_;
+  pointer += 4;
+  *reinterpret_cast<int32_t*>(pointer) = start_value_;
+  pointer += 4;
+
+  key_encoder_->Dump(pointer);
+  pointer += key_encoder_->EstimateSize();
+  seq_encoder_->Dump(pointer);
+  pointer += seq_encoder_->EstimateSize();
+  type_encoder_->Dump(pointer);
+  pointer += type_encoder_->EstimateSize();
+
+  // Write encoding type
+  *(pointer++) = (uint8_t)value_enc_type_;
+  value_encoder_->Dump(pointer);
+}
 
 VertBlockBuilder::VertBlockBuilder(const Options* options)
-    : BlockBuilder(options),
-      section_limit_(128),
-      offset_(0),
-      current_section_(NULL),
-      internal_buffer_(NULL) {}
-
-VertBlockBuilder::~VertBlockBuilder() {
-  for (auto& section : section_buffer_) {
-    delete section;
-  }
-  if (current_section_ != NULL) {
-    delete current_section_;
-  }
-  if (internal_buffer_ == NULL) {
-    delete internal_buffer_;
-  }
-}
+    : BlockBuilder(options), section_limit_(128), offset_(0) {}
 
 // Assert the keys and values are both int32_t
 void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
@@ -61,47 +72,41 @@ void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
   ParsedInternalKey internal_key;
   ParseInternalKey(key, &internal_key);
 
-  int32_t intkey = *reinterpret_cast<const int32_t*>(internal_key.user_key.data());
-
-  // TODO write other parts of the internal key
-  assert(false);
-
-  if (current_section_ == NULL) {
-    current_section_ = new VertSection(encoding_);
-    current_section_->StartValue(intkey);
+  // write other parts of the internal key
+  if (current_section_ == nullptr) {
+    int32_t intkey =
+        *reinterpret_cast<const int32_t*>(internal_key.user_key.data());
+    current_section_ = std::unique_ptr<VertSectionBuilder>(
+        new VertSectionBuilder(value_encoding_, intkey));
   }
-  current_section_->Add(intkey, value);
+  current_section_->Add(internal_key, value);
   if (current_section_->NumEntry() >= section_limit_) {
     DumpSection();
   }
 }
 
 void VertBlockBuilder::DumpSection() {
-  if (current_section_ != NULL) {
-    current_section_->Close();
-    meta_.AddSection(offset_, current_section_->StartValue());
-    offset_ += current_section_->EstimateSize();
-    section_buffer_.push_back(current_section_);
-    current_section_ = NULL;
-  }
+  current_section_->Close();
+  meta_.AddSection(offset_, current_section_->StartValue());
+  offset_ += current_section_->EstimateSize();
+
+  section_buffer_.push_back(move(current_section_));
+
+  current_section_ = nullptr;
 }
 
 void VertBlockBuilder::Reset() {
-  for (auto& sec : section_buffer_) {
-    delete sec;
-  }
   section_buffer_.clear();
-  if (current_section_ != NULL) {
-    delete current_section_;
-    current_section_ = NULL;
-  }
+  current_section_ = NULL;
   offset_ = 0;
-
+  buffer_.clear();
   meta_.Reset();
 }
 
 Slice VertBlockBuilder::Finish() {
-  DumpSection();
+  if (current_section_ != nullptr) {
+    DumpSection();
+  }
   meta_.Finish();
 
   auto meta_size = meta_.EstimateSize();
@@ -110,10 +115,12 @@ Slice VertBlockBuilder::Finish() {
   // Allocate Space
   // TODO In real world this should be directly write to file
   uint32_t buffer_size = meta_size + section_size + 4;
-  internal_buffer_ = new char[buffer_size];
-  memset(internal_buffer_, 0, meta_size + section_size);
-  meta_.Write(internal_buffer_);
-  auto pointer = internal_buffer_ + meta_size;
+
+  buffer_.resize(buffer_size);
+  uint8_t* internal_buffer = buffer_.data();
+
+  meta_.Write(internal_buffer);
+  auto pointer = internal_buffer + meta_size;
 
   for (auto& sec : section_buffer_) {
     auto sec_size = sec->EstimateSize();
@@ -122,9 +129,9 @@ Slice VertBlockBuilder::Finish() {
   }
 
   // MAGIC
-  *((uint32_t*)(internal_buffer_ + meta_size + section_size)) = MAGIC;
+  *((uint32_t*)(internal_buffer + meta_size + section_size)) = MAGIC;
 
-  return Slice(internal_buffer_, buffer_size);
+  return Slice((const char*)internal_buffer, buffer_size);
 }
 
 size_t VertBlockBuilder::CurrentSizeEstimate() const {

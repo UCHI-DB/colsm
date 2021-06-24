@@ -106,7 +106,7 @@ TEST(VertBlockMeta, Search) {
 }
 
 TEST(VertSection, Write) {
-  VertSection section(Encodings::PLAIN);
+  VertSection section(EncodingType::PLAIN);
   char v[4];
   Slice value(v, 4);  // Dummy
   section.StartValue(3);
@@ -224,7 +224,7 @@ TEST(VertSection, FindStart) {
 }
 
 TEST(VertSection, EstimateSize) {
-  VertSection section(Encodings::PLAIN);
+  VertSection section(EncodingType::PLAIN);
   section.StartValue(0);
   std::string strvalue = "it is a good day";
   Slice value(strvalue.data(), strvalue.size());
@@ -253,7 +253,7 @@ class VertBlockMetaForTest : public VertBlockMeta {
 TEST(VertBlockTest, Build) {
   Options option;
   VertBlockBuilder builder(&option);
-  builder.encoding_ = Encodings::LENGTH;
+  builder.encoding_ = EncodingType::LENGTH;
 
   int buffer = 0;
   Slice key((const char*)&buffer, 4);
@@ -292,7 +292,7 @@ TEST(VertBlockTest, Build) {
 TEST(VertBlockTest, Next) {
   Options option;
   VertBlockBuilder builder(&option);
-  builder.encoding_ = Encodings::LENGTH;
+  builder.encoding_ = EncodingType::LENGTH;
 
   int buffer = 0;
   Slice key((const char*)&buffer, 4);
@@ -323,7 +323,7 @@ TEST(VertBlockTest, Next) {
 TEST(VertBlockTest, Seek) {
   Options option;
   VertBlockBuilder builder(&option);
-  builder.encoding_ = Encodings::LENGTH;
+  builder.encoding_ = EncodingType::LENGTH;
 
   int buffer = 0;
   Slice write_key((const char*)&buffer, 4);
@@ -365,7 +365,7 @@ TEST(VertBlockTest, Seek) {
 TEST(VertBlockTest, SeekThenNext) {
   Options option;
   VertBlockBuilder builder(&option);
-  builder.encoding_ = Encodings::LENGTH;
+  builder.encoding_ = EncodingType::LENGTH;
 
   int buffer = 0;
   Slice write_key((const char*)&buffer, 4);

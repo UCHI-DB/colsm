@@ -53,13 +53,13 @@ class VertBlockMeta {
    * Read the metadata from the given buffer location.
    * @return the bytes read
    */
-  uint32_t Read(const char*);
+  uint32_t Read(const uint8_t*);
 
   /**
    * Write metadata to the buffer
    * @return the bytes written
    */
-  void Write(char*);
+  void Write(uint8_t*);
 
   uint32_t EstimateSize() const;
 
@@ -87,25 +87,13 @@ class VertSection {
   int32_t start_value_;
   uint8_t bit_width_;
 
-  bool reading_;
-
-  // Encoded Key Data
-  const uint8_t* keys_data_;
-
-  // Key Buffer
-  std::vector<uint32_t> keys_plain_;
-
-  Encodings encoding_enum_;
-  Encoding* value_encoding_;
-  std::unique_ptr<Encoder> value_encoder_ = nullptr;
-  std::unique_ptr<Decoder> value_decoder_ = nullptr;
-
-  uint32_t BitPackSize() { return (bit_width_ * num_entry_ + 63) >> 6 << 3; }
+  std::unique_ptr<Decoder> key_decoder_;
+  std::unique_ptr<Decoder> seq_decoder_;
+  std::unique_ptr<Decoder> type_decoder_;
+  std::unique_ptr<Decoder> value_decoder_;
 
  public:
   VertSection();
-
-  VertSection(const Encodings&);
 
   virtual ~VertSection() = default;
 
@@ -114,8 +102,6 @@ class VertSection {
   uint8_t BitWidth() const { return bit_width_; }
 
   int32_t StartValue() const { return start_value_; }
-
-  void StartValue(int32_t sv) { start_value_ = sv; }
 
   const uint8_t* KeysData() { return keys_data_; }
 
@@ -126,21 +112,7 @@ class VertSection {
    */
   Decoder* ValueDecoder() { return value_decoder_.get(); }
 
-  //
-  // Functions for writer mode
-  //
-  void Add(uint32_t key, const Slice& value);
-
-  uint32_t EstimateSize();
-
-  void Close();
-
-  void Dump(char*);
-
-  //
-  // Functions for reader mode
-  //
-  void Read(const char*);
+  void Read(const uint8_t*);
 
   /**
    * Find target in the section

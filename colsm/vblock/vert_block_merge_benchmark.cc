@@ -46,7 +46,8 @@ BlockContents prepareBlock(std::vector<int> &keys, int value_len) {
     return BlockContents{heap, true, false};
 }
 
-BlockContents prepareVBlock(std::vector<int> &keys, int value_len, Encodings encoding) {
+BlockContents prepareVBlock(std::vector<int> &keys, int value_len,
+                            EncodingType encoding) {
     auto comparator = colsm::intComparator();
     uint32_t num_entry = keys.size();
     uint32_t intkey;
@@ -121,8 +122,8 @@ void VBlockMergeWithNoOverlap(benchmark::State &state) {
         key2.push_back(i*2+1);
     }
 
-    auto content1 = prepareVBlock(key1, 64, Encodings::LENGTH);
-    auto content2 = prepareVBlock(key2, 64, Encodings::LENGTH);
+    auto content1 = prepareVBlock(key1, 64, EncodingType::LENGTH);
+    auto content2 = prepareVBlock(key2, 64, EncodingType::LENGTH);
 
     for (auto _: state) {
         VertBlockCore block1(content1);
@@ -131,7 +132,7 @@ void VBlockMergeWithNoOverlap(benchmark::State &state) {
         Options option;
         option.comparator = comparator.get();
         VertBlockBuilder builder((const Options *) &option);
-        builder.encoding_ = Encodings::LENGTH;
+        builder.encoding_ = EncodingType::LENGTH;
 
         auto ite1 = block1.NewIterator(comparator.get());
         auto ite2 = block2.NewIterator(comparator.get());

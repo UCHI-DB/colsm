@@ -59,7 +59,7 @@ class Encoding {
   virtual std::unique_ptr<Decoder> decoder() = 0;
 };
 
-enum Encodings {
+enum EncodingType {
   // For String
   // Store data in <length, value> pair
   PLAIN,
@@ -74,28 +74,28 @@ enum Encodings {
 namespace string {
 class EncodingFactory {
  public:
-  static Encoding& Get(Encodings);
+  static Encoding& Get(EncodingType);
 };
 }  // namespace string
 
 namespace u64 {
 class EncodingFactory {
  public:
-  static Encoding& Get(Encodings);
+  static Encoding& Get(EncodingType);
 };
 }  // namespace u64
 
 namespace u32 {
 class EncodingFactory {
  public:
-  static Encoding& Get(Encodings);
+  static Encoding& Get(EncodingType);
 };
 }  // namespace u32
 
 namespace u8 {
 class EncodingFactory {
  public:
-  static Encoding& Get(Encodings);
+  static Encoding& Get(EncodingType);
 };
 }  // namespace u8
 

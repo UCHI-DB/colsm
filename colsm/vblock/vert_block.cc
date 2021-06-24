@@ -96,8 +96,8 @@ uint64_t VertBlockMeta::Search(int32_t value) {
                                  target)];
 }
 
-uint32_t VertBlockMeta::Read(const char* in) {
-  const char* pointer = in;
+uint32_t VertBlockMeta::Read(const uint8_t* in) {
+  auto pointer = in;
   num_section_ = *reinterpret_cast<const uint32_t*>(pointer);
   pointer += 4;
   offsets_.resize(num_section_);
@@ -120,8 +120,8 @@ uint32_t VertBlockMeta::EstimateSize() const {
   return 9 + num_section_ * 8 + BitPackSize();
 }
 
-void VertBlockMeta::Write(char* out) {
-  char* pointer = out;
+void VertBlockMeta::Write(uint8_t* out) {
+  auto pointer = out;
   *reinterpret_cast<uint32_t*>(pointer) = num_section_;
   pointer += 4;
   memcpy(pointer, offsets_.data(), 8 * num_section_);
@@ -138,47 +138,14 @@ void VertBlockMeta::Write(char* out) {
 
 VertSection::VertSection() : num_entry_(0), reading_(true) {}
 
-VertSection::VertSection(const Encodings& enc) : VertSection() {
+VertSection::VertSection(const EncodingType& enc) : VertSection() {
   reading_ = false;
   encoding_enum_ = enc;
   value_encoding_ = &string::EncodingFactory::Get(enc);
   value_encoder_ = value_encoding_->encoder();
 }
 
-void VertSection::Add(uint32_t key, const Slice& value) {
-  num_entry_++;
-  keys_plain_.push_back(key - start_value_);
-
-  value_encoder_->Encode(value);
-}
-
-uint32_t VertSection::EstimateSize() {
-  bit_width_ = 32 - _lzcnt_u32(keys_plain_[num_entry_ - 1]);
-  return 10 + BitPackSize() + value_encoder_->EstimateSize();
-}
-
-void VertSection::Close() { value_encoder_->Close(); }
-
-void VertSection::Dump(char* out) {
-  auto pointer = out;
-  *reinterpret_cast<uint32_t*>(pointer) = num_entry_;
-  pointer += 4;
-  *reinterpret_cast<int32_t*>(pointer) = start_value_;
-  pointer += 4;
-  *reinterpret_cast<uint8_t*>(pointer++) = bit_width_;
-  sboost::byteutils::bitpack(keys_plain_.data(), keys_plain_.size(), bit_width_,
-                             (uint8_t*)pointer);
-  pointer += BitPackSize();
-
-  keys_plain_.clear();
-  // Write encoding type
-  *(pointer++) = encoding_enum_;
-  value_encoder_->Dump(reinterpret_cast<uint8_t*>(pointer));
-
-  value_encoder_ = nullptr;
-}
-
-void VertSection::Read(const char* in) {
+void VertSection::Read(const uint8_t* in) {
   auto pointer = in;
   num_entry_ = *reinterpret_cast<const uint32_t*>(pointer);
   pointer += 4;
@@ -189,7 +156,7 @@ void VertSection::Read(const char* in) {
   pointer += BitPackSize();
 
   // Read encoding type
-  auto enc_type = static_cast<Encodings>(*(pointer++));
+  auto enc_type = static_cast<EncodingType>(*(pointer++));
   value_encoding_ = &string::EncodingFactory::Get(enc_type);
   value_decoder_ = value_encoding_->decoder();
 
