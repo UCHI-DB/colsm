@@ -6,6 +6,7 @@
 #define LEVELDB_VERT_CODER_H
 
 #include <cstdint>
+#include <memory>
 
 #include "leveldb/slice.h"
 
@@ -53,9 +54,9 @@ class Decoder {
 
 class Encoding {
  public:
-  virtual Encoder* encoder() = 0;
+  virtual std::unique_ptr<Encoder> encoder() = 0;
 
-  virtual Decoder* decoder() = 0;
+  virtual std::unique_ptr<Decoder> decoder() = 0;
 };
 
 enum Encodings {

@@ -63,6 +63,7 @@ inline uint32_t readVar32(uint8_t*& pointer) {
     byte = *(pointer++);
     result |= (byte & 0x7F) << ((bytec++) * 7);
   } while (byte & 0x80);
+  return result;
 }
 
 inline uint64_t readVar64(uint8_t*& pointer) {
@@ -73,14 +74,19 @@ inline uint64_t readVar64(uint8_t*& pointer) {
     byte = *(pointer++);
     result |= (byte & 0x7F) << ((bytec++) * 7);
   } while (byte & 0x80);
+  return result;
 }
 
 template <class E, class D>
 class EncodingTemplate : public Encoding {
  public:
-  Encoder* encoder() override { return new E(); }
+  std::unique_ptr<Encoder> encoder() override {
+    return std::unique_ptr<Encoder>(new E());
+  }
 
-  Decoder* decoder() override { return new D(); }
+  std::unique_ptr<Decoder> decoder() override {
+    return std::unique_ptr<Decoder>(new D());
+  }
 };
 
 namespace string {
@@ -107,31 +113,28 @@ class PlainEncoder : public Encoder {
 
 class PlainDecoder : public Decoder {
  private:
-  uint32_t* length_pointer_;
+  uint8_t* length_pointer_;
   const uint8_t* data_pointer_;
-  uint8_t* raw_pointer_;
 
  public:
   void Attach(const uint8_t* buffer) override {
-    length_pointer_ = (uint32_t*)buffer;
+    length_pointer_ = (uint8_t*)buffer;
     data_pointer_ = buffer + 4;
-    raw_pointer_ = (uint8_t*)buffer;
   }
 
   void Skip(uint32_t offset) override {
     for (uint32_t i = 0; i < offset; ++i) {
-      auto length = *length_pointer_;
-      data_pointer_ += length;
-      length_pointer_ = (uint32_t*)data_pointer_;
-      data_pointer_ += 4;
+      auto length = *((uint32_t*)length_pointer_);
+      data_pointer_ += length + 4;
+      length_pointer_ += length + 4;
     }
   }
 
   Slice Decode() override {
-    auto result =
-        Slice(reinterpret_cast<const char*>(data_pointer_), *(length_pointer_));
-    data_pointer_ += *length_pointer_ + 4;
-    length_pointer_ += *length_pointer_;
+    auto length = *((uint32_t*)length_pointer_);
+    auto result = Slice(reinterpret_cast<const char*>(data_pointer_), length);
+    data_pointer_ += length + 4;
+    length_pointer_ += length + 4;
     return result;
   }
 };
@@ -332,6 +335,7 @@ class BitpackDecoder : public Decoder {
     offset_ += bit_width_;
     pointer_ += offset_ >> 6;
     offset_ &= 0x3F;
+    return result;
   }
 };
 

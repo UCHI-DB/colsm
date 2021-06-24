@@ -145,10 +145,6 @@ VertSection::VertSection(const Encodings& enc) : VertSection() {
   value_encoder_ = value_encoding_->encoder();
 }
 
-VertSection::~VertSection() {
-  if (reading_) delete value_decoder_;
-}
-
 void VertSection::Add(uint32_t key, const Slice& value) {
   num_entry_++;
   keys_plain_.push_back(key - start_value_);
@@ -179,7 +175,6 @@ void VertSection::Dump(char* out) {
   *(pointer++) = encoding_enum_;
   value_encoder_->Dump(reinterpret_cast<uint8_t*>(pointer));
 
-  delete value_encoder_;
   value_encoder_ = nullptr;
 }
 

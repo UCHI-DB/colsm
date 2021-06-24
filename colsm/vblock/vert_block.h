@@ -97,8 +97,8 @@ class VertSection {
 
   Encodings encoding_enum_;
   Encoding* value_encoding_;
-  Encoder* value_encoder_ = NULL;
-  Decoder* value_decoder_ = NULL;
+  std::unique_ptr<Encoder> value_encoder_ = nullptr;
+  std::unique_ptr<Decoder> value_decoder_ = nullptr;
 
   uint32_t BitPackSize() { return (bit_width_ * num_entry_ + 63) >> 6 << 3; }
 
@@ -107,7 +107,7 @@ class VertSection {
 
   VertSection(const Encodings&);
 
-  virtual ~VertSection();
+  virtual ~VertSection() = default;
 
   uint32_t NumEntry() const { return num_entry_; }
 
@@ -124,7 +124,7 @@ class VertSection {
    *
    * @return
    */
-  Decoder* ValueDecoder() { return value_decoder_; }
+  Decoder* ValueDecoder() { return value_decoder_.get(); }
 
   //
   // Functions for writer mode
