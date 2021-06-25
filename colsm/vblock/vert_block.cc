@@ -136,14 +136,7 @@ void VertBlockMeta::Write(uint8_t* out) {
   //  memcpy(pointer, starts_, (start_bitwidth_ * num_section_ + 7) >> 3);
 }
 
-VertSection::VertSection() : num_entry_(0), reading_(true) {}
-
-VertSection::VertSection(const EncodingType& enc) : VertSection() {
-  reading_ = false;
-  encoding_enum_ = enc;
-  value_encoding_ = &string::EncodingFactory::Get(enc);
-  value_encoder_ = value_encoding_->encoder();
-}
+VertSection::VertSection() : num_entry_(0) {}
 
 void VertSection::Read(const uint8_t* in) {
   auto pointer = in;
@@ -151,31 +144,48 @@ void VertSection::Read(const uint8_t* in) {
   pointer += 4;
   start_value_ = *reinterpret_cast<const int32_t*>(pointer);
   pointer += 4;
-  bit_width_ = *reinterpret_cast<const uint8_t*>(pointer++);
-  keys_data_ = reinterpret_cast<const uint8_t*>(pointer);
-  pointer += BitPackSize();
 
+  auto sizes = reinterpret_cast<const uint32_t*>(pointer);
+  auto key_size = *(sizes++);
+  auto seq_size = *(sizes++);
+  auto type_size = *(sizes++);
+  auto value_size = *(sizes++);
+
+  pointer = (uint8_t*)sizes;
   // Read encoding type
   auto enc_type = static_cast<EncodingType>(*(pointer++));
-  value_encoding_ = &string::EncodingFactory::Get(enc_type);
-  value_decoder_ = value_encoding_->decoder();
 
+  bit_width_ = *(pointer);
+  key_data_ = pointer + 1;
+  key_decoder_ = u32::EncodingFactory::Get(BITPACK).decoder();
+  key_decoder_->Attach(pointer);
+  pointer += key_size;
+
+  seq_decoder_ = u64::EncodingFactory::Get(PLAIN).decoder();
+  seq_decoder_->Attach(pointer);
+  pointer += seq_size;
+
+  type_decoder_ = u8::EncodingFactory::Get(RUNLENGTH).decoder();
+  type_decoder_->Attach(pointer);
+  pointer += type_size;
+
+  value_decoder_ = string::EncodingFactory::Get(enc_type).decoder();
   value_decoder_->Attach(reinterpret_cast<const uint8_t*>(pointer));
 }
 
 int32_t VertSection::Find(int32_t target) {
   //  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
   //  return sbp.equal(keys_data_, num_entry_);
-  return eq_packed(keys_data_, num_entry_, bit_width_, target - start_value_);
+  return eq_packed(key_data_, num_entry_, bit_width_, target - start_value_);
 }
 
 int32_t VertSection::FindStart(int32_t target) {
   sboost::SortedBitpack sbp(bit_width_, target - start_value_);
-  return sbp.geq(keys_data_, num_entry_);
+  return sbp.geq(key_data_, num_entry_);
 }
 
 VertBlockCore::VertBlockCore(const BlockContents& data)
-    : raw_data_(data.data.data()),
+    : raw_data_((uint8_t*)data.data.data()),
       size_(data.data.size()),
       owned_(data.heap_allocated) {
   meta_.Read(raw_data_);

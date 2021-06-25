@@ -85,6 +85,9 @@ class VertSection {
   // Basic Info
   uint32_t num_entry_;
   int32_t start_value_;
+
+  // For fast lookup on key_data
+  const uint8_t* key_data_;
   uint8_t bit_width_;
 
   std::unique_ptr<Decoder> key_decoder_;
@@ -103,7 +106,7 @@ class VertSection {
 
   int32_t StartValue() const { return start_value_; }
 
-  const uint8_t* KeysData() { return keys_data_; }
+  const uint8_t* KeysData() { return key_data_; }
 
   /**
    * Expose Decoder for iterator operations
@@ -147,12 +150,12 @@ class VertBlockCore : public BlockCore {
  private:
   class VIter;
 
-  const char* raw_data_;
+  const uint8_t* raw_data_;
   size_t size_;
   bool owned_;
 
   VertBlockMeta meta_;
-  const char* content_data_;
+  const uint8_t* content_data_;
 };
 }  // namespace colsm
 

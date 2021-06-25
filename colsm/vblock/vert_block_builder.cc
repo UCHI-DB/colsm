@@ -32,7 +32,7 @@ void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
 }
 
 uint32_t VertSectionBuilder::EstimateSize() {
-  return 9 + key_encoder_->EstimateSize() + seq_encoder_->EstimateSize() +
+  return 25 + key_encoder_->EstimateSize() + seq_encoder_->EstimateSize() +
          type_encoder_->EstimateSize() + value_encoder_->EstimateSize();
 }
 
@@ -50,15 +50,25 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   *reinterpret_cast<int32_t*>(pointer) = start_value_;
   pointer += 4;
 
-  key_encoder_->Dump(pointer);
-  pointer += key_encoder_->EstimateSize();
-  seq_encoder_->Dump(pointer);
-  pointer += seq_encoder_->EstimateSize();
-  type_encoder_->Dump(pointer);
-  pointer += type_encoder_->EstimateSize();
+  auto key_size = key_encoder_->EstimateSize();
+  auto seq_size = seq_encoder_->EstimateSize();
+  auto type_size = type_encoder_->EstimateSize();
+  auto value_size = value_encoder_->EstimateSize();
 
-  // Write encoding type
+  auto size_pointer = (uint32_t*)pointer;
+  *(size_pointer++) = key_size;
+  *(size_pointer++) = seq_size;
+  *(size_pointer++) = type_size;
+  *(size_pointer++) = value_size;
+  pointer += 16;
   *(pointer++) = (uint8_t)value_enc_type_;
+
+  key_encoder_->Dump(pointer);
+  pointer += key_size;
+  seq_encoder_->Dump(pointer);
+  pointer += seq_size;
+  type_encoder_->Dump(pointer);
+  pointer += type_size;
   value_encoder_->Dump(pointer);
 }
 
