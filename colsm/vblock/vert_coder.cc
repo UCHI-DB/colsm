@@ -8,6 +8,7 @@
 #include <cstring>
 #include <immintrin.h>
 #include <sstream>
+#include <unpacker.h>
 #include <vector>
 
 #include "util/coding.h"
@@ -313,36 +314,43 @@ class BitpackEncoder : public Encoder {
 
 class BitpackDecoder : public Decoder {
  private:
-  uint64_t* pointer_;
-  uint8_t offset_;
+  uint8_t* pointer_;
   uint8_t bit_width_;
-  uint32_t mask_;
+  uint8_t index_;
+  sboost::Unpacker* unpacker_;
+  alignas(64) __m256i unpacked_;
+
+  void LoadNextGroup() {
+    unpacked_ = unpacker_->unpack(pointer_);
+    index_ = 0;
+    pointer_ += bit_width_;
+  }
 
  public:
   void Attach(const uint8_t* buffer) override {
     bit_width_ = *buffer;
-    pointer_ = (uint64_t*)(buffer + 1);
-    offset_ = 0;
-    mask_ = (1u << bit_width_) - 1;
+    pointer_ = (uint8_t*)buffer + 1;
+    unpacker_ = sboost::unpackers[bit_width_];
+    LoadNextGroup();
   }
 
   void Skip(uint32_t offset) override {
-    offset_ += bit_width_ * offset;
-    pointer_ += offset >> 6;
-    offset_ &= 0x3F;
+    index_ += offset;
+    auto group_index = index_ >> 3;
+    index_ &= 0x7;
+    if (group_index > 0) {
+      pointer_ += (group_index - 1) * bit_width_;
+      LoadNextGroup();
+    }
   }
 
   uint32_t DecodeU32() override {
-    uint32_t result = (*(pointer_) >> offset_) & mask_;
-    offset_ += bit_width_;
-    if (offset_ >= 64) {
-      auto overflow = offset_ - 64;
-      offset_ &= 0x3F;
-      pointer_ += 1;
-      result += (*(pointer_) & ((1UL << overflow) - 1))
-                << (bit_width_ - offset_);
+    auto entry = (unpacked_[index_ / 2] >> (32 * (index_ & 1))) & (uint32_t)-1;
+    index_++;
+    if (index_ >= 8) {
+      LoadNextGroup();
     }
-    return result;
+    return entry;
   }
 };
 
