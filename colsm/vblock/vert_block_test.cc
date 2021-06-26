@@ -117,12 +117,16 @@ TEST(VertSection, Read) {
 
   *(uint32_t*)pointer = 201;
   pointer += 4;
+  *(pointer++) = BITPACK;
   *(uint32_t*)pointer = 202;
   pointer += 4;
+  *(pointer++) = PLAIN;
   *(uint32_t*)pointer = 204;
   pointer += 4;
+  *(pointer++) = RUNLENGTH;
   *(uint32_t*)pointer = 208;
   pointer += 4;
+  *(pointer++) = PLAIN;
 
   *(uint8_t*)pointer = 8;
   pointer++;
@@ -141,14 +145,18 @@ TEST(VertSection, Read) {
 }
 
 TEST(VertSection, Find) {
-  uint8_t buffer[113];
-  memset(buffer, 0, 113);
+  uint8_t buffer[200];
+  memset(buffer, 0, 200);
   auto pointer = buffer;
 
   *(uint32_t*)pointer = 100;
   pointer += 4;
   *(int32_t*)pointer = 234;
   pointer += 4;
+
+  *(pointer+4) = BITPACK;
+  pointer += 20;
+
   *(uint8_t*)pointer = 8;
   pointer++;
 
@@ -167,14 +175,18 @@ TEST(VertSection, Find) {
 }
 
 TEST(VertSection, FindStart) {
-  uint8_t buffer[113];
-  memset(buffer, 0, 113);
+  uint8_t buffer[200];
+  memset(buffer, 0, 200);
   auto pointer = buffer;
 
   *(uint32_t*)pointer = 100;
   pointer += 4;
   *(int32_t*)pointer = 234;
   pointer += 4;
+
+  *(pointer+4) = BITPACK;
+  pointer += 20;
+
   *(uint8_t*)pointer = 8;
   pointer++;
 

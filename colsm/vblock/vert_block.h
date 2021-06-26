@@ -113,6 +113,9 @@ class VertSection {
    *
    * @return
    */
+  Decoder* KeyDecoder() { return key_decoder_.get(); }
+  Decoder* SeqDecoder() { return seq_decoder_.get(); }
+  Decoder* TypeDecoder() { return type_decoder_.get(); }
   Decoder* ValueDecoder() { return value_decoder_.get(); }
 
   void Read(const uint8_t*);

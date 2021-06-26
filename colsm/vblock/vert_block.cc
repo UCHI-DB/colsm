@@ -145,32 +145,37 @@ void VertSection::Read(const uint8_t* in) {
   start_value_ = *reinterpret_cast<const int32_t*>(pointer);
   pointer += 4;
 
-  auto sizes = reinterpret_cast<const uint32_t*>(pointer);
-  auto key_size = *(sizes++);
-  auto seq_size = *(sizes++);
-  auto type_size = *(sizes++);
-  auto value_size = *(sizes++);
+  auto key_size = *((uint32_t*)pointer);
+  pointer += 4;
+  EncodingType key_enc = (EncodingType) * (pointer++);
+  auto seq_size = *((uint32_t*)pointer);
+  pointer += 4;
+  EncodingType seq_enc = (EncodingType) * (pointer++);
+  auto type_size = *((uint32_t*)pointer);
+  pointer += 4;
+  EncodingType type_enc = (EncodingType) * (pointer++);
+  auto value_size = *((uint32_t*)pointer);
+  pointer += 4;
+  EncodingType value_enc = (EncodingType) * (pointer++);
 
-  pointer = (uint8_t*)sizes;
-  // Read encoding type
-  auto enc_type = static_cast<EncodingType>(*(pointer++));
-
+  // Read data about key encoding
   bit_width_ = *(pointer);
   key_data_ = pointer + 1;
+  assert(key_enc == BITPACK);
   key_decoder_ = u32::EncodingFactory::Get(BITPACK).decoder();
   key_decoder_->Attach(pointer);
   pointer += key_size;
 
-  seq_decoder_ = u64::EncodingFactory::Get(PLAIN).decoder();
+  seq_decoder_ = u64::EncodingFactory::Get(seq_enc).decoder();
   seq_decoder_->Attach(pointer);
   pointer += seq_size;
 
-  type_decoder_ = u8::EncodingFactory::Get(RUNLENGTH).decoder();
+  type_decoder_ = u8::EncodingFactory::Get(type_enc).decoder();
   type_decoder_->Attach(pointer);
   pointer += type_size;
 
-  value_decoder_ = string::EncodingFactory::Get(enc_type).decoder();
-  value_decoder_->Attach(reinterpret_cast<const uint8_t*>(pointer));
+  value_decoder_ = string::EncodingFactory::Get(value_enc).decoder();
+  value_decoder_->Attach(pointer);
 }
 
 int32_t VertSection::Find(int32_t target) {
@@ -202,7 +207,7 @@ class VertBlockCore::VIter : public Iterator {
  private:
   const Comparator* const comparator_;
   VertBlockMeta& meta_;
-  const char* data_pointer_;
+  const uint8_t* data_pointer_;
 
   uint32_t section_index_ = -1;
   VertSection section_;
@@ -243,7 +248,7 @@ class VertBlockCore::VIter : public Iterator {
   }
 
  public:
-  VIter(const Comparator* comparator, VertBlockMeta& meta, const char* data)
+  VIter(const Comparator* comparator, VertBlockMeta& meta, const uint8_t* data)
       : comparator_(comparator),
         key_((const char*)&intkey_, 4),
         meta_(meta),

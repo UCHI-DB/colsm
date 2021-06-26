@@ -18,9 +18,12 @@
 //               starts         : bit-packed uint32_t
 //    section:   num_entry      : uint32_t
 //               start_value    : int32_t
-//               keys_offset    : uint32_t
+//               key_offset     : uint32_t
+//               key_encoding   : uint8_t
 //               seq_offset     : uint32_t
+//               seq_encoding   : uint8_t
 //               type_offset    : uint32_t
+//               type_encoding  : uint8_t
 //               value_offset   : uint32_t
 //               value_encoding : uint8_t
 //               keys {num_entry}

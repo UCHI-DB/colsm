@@ -32,7 +32,7 @@ void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
 }
 
 uint32_t VertSectionBuilder::EstimateSize() {
-  return 25 + key_encoder_->EstimateSize() + seq_encoder_->EstimateSize() +
+  return 28 + key_encoder_->EstimateSize() + seq_encoder_->EstimateSize() +
          type_encoder_->EstimateSize() + value_encoder_->EstimateSize();
 }
 
@@ -55,13 +55,18 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   auto type_size = type_encoder_->EstimateSize();
   auto value_size = value_encoder_->EstimateSize();
 
-  auto size_pointer = (uint32_t*)pointer;
-  *(size_pointer++) = key_size;
-  *(size_pointer++) = seq_size;
-  *(size_pointer++) = type_size;
-  *(size_pointer++) = value_size;
-  pointer += 16;
-  *(pointer++) = (uint8_t)value_enc_type_;
+  *((uint32_t*)pointer) = key_size;
+  pointer += 4;
+  *(pointer++) = BITPACK;
+  *((uint32_t*)pointer) = seq_size;
+  pointer += 4;
+  *(pointer++) = PLAIN;
+  *((uint32_t*)pointer) = type_size;
+  pointer += 4;
+  *(pointer++) = RUNLENGTH;
+  *((uint32_t*)pointer) = value_size;
+  pointer += 4;
+  *(pointer++) = PLAIN;
 
   key_encoder_->Dump(pointer);
   pointer += key_size;
