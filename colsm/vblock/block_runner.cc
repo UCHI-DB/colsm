@@ -59,7 +59,7 @@ BlockContents prepareVBlock(std::vector<int> &keys, int value_len,
     Options option;
     option.comparator = comparator.get();
     VertBlockBuilder builder((const Options *) &option);
-    builder.encoding_ = encoding;
+    builder.value_encoding_ = encoding;
 
     for (auto i = 0; i < num_entry; ++i) {
         intkey = keys[i];
@@ -90,7 +90,7 @@ void runVert() {
     Options option;
     option.comparator = comparator.get();
     VertBlockBuilder builder((const Options *) &option);
-    builder.encoding_ = EncodingType::LENGTH;
+    builder.value_encoding_ = EncodingType::LENGTH;
 
     auto ite1 = block1.NewIterator(comparator.get());
     auto ite2 = block2.NewIterator(comparator.get());

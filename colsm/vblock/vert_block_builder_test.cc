@@ -6,22 +6,26 @@
 
 #include <colsm/comparators.h>
 #include <gtest/gtest.h>
+#include <byteutils.h>
+#include <immintrin.h>
 
 using namespace colsm;
 
 TEST(VertSectionBuilder, Write) {
   VertSectionBuilder section(EncodingType::PLAIN,3);
+  int ik;
+  Slice key((char*)&ik,4);
   char v[4];
   Slice value(v, 4);  // Dummy
-  section.StartValue(3);
   for (auto i = 0; i < 100; ++i) {
-    section.Add(i * 2 + 3, value);
+    ik = i*2+3;
+    section.Add(ParsedInternalKey(key,100,ValueType::kTypeValue), value);
   }
   auto size = section.EstimateSize();
   // 114 data, 800 value
   EXPECT_EQ(914, size);
   EXPECT_EQ(100, section.NumEntry());
-  char buffer[size];
+  uint8_t buffer[size];
   memset(buffer, 0, size);
 
   section.Dump(buffer);
@@ -42,6 +46,7 @@ TEST(VertSectionBuilder, Write) {
   for (auto i = 0; i < 100; ++i) {
     plain_buffer[i] = 2 * i;
   }
+
   sboost::byteutils::bitpack(plain_buffer, 100, 8, packed_buffer);
 
   for (auto i = 0; i < 104; ++i) {
@@ -51,10 +56,13 @@ TEST(VertSectionBuilder, Write) {
 
 TEST(VertSectionBuilder, EstimateSize) {
   VertSectionBuilder section(EncodingType::PLAIN,0);
+    int ik;
+    Slice key((char*)&ik,4);
   std::string strvalue = "it is a good day";
   Slice value(strvalue.data(), strvalue.size());
   for (int i = 0; i < 1000; ++i) {
-    section.Add(i, value);
+      ik = i;
+    section.Add(ParsedInternalKey(key,100,ValueType::kTypeValue), value);
 
     int bitwidth = 32 - _lzcnt_u32(i);
     int expected_value_size = (i + 1) * (4 + strvalue.size());
@@ -72,10 +80,21 @@ TEST(VertBlockBuilder, Add) {
   VertBlockBuilder builder(&options);
 }
 
+class VertBlockMetaForTest : public VertBlockMeta {
+public:
+    VertBlockMetaForTest() : VertBlockMeta() {}
+
+    std::vector<uint64_t>& Offset() { return offsets_; }
+
+    uint8_t StartBitWidth() { return start_bitwidth_; }
+
+    uint8_t* Starts() { return starts_; }
+};
+
 TEST(VertBlockBuilder, Build) {
   Options option;
   VertBlockBuilder builder(&option);
-  builder.encoding_ = EncodingType::LENGTH;
+  builder.value_encoding_ = EncodingType::LENGTH;
 
   int buffer = 0;
   Slice key((const char*)&buffer, 4);
@@ -89,7 +108,7 @@ TEST(VertBlockBuilder, Build) {
   // section =
   EXPECT_EQ(9117, result.size());
 
-  auto data = result.data();
+  uint8_t* data = (uint8_t*)result.data();
 
   uint32_t mgc = *((uint32_t*)(result.data() + result.size() - 4));
   EXPECT_EQ(mgc, MAGIC);

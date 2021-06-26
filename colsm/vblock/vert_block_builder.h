@@ -63,7 +63,7 @@ class VertSectionBuilder {
   std::unique_ptr<Encoder> value_encoder_;
 
  public:
-  VertSectionBuilder(EncodingType& enc_type, int32_t);
+  VertSectionBuilder(EncodingType enc_type, int32_t);
 
   int32_t StartValue() const { return start_value_; }
 

@@ -204,17 +204,6 @@ TEST(VertSection, FindStart) {
   EXPECT_EQ(48, section.FindStart(329));
 }
 
-class VertBlockMetaForTest : public VertBlockMeta {
- public:
-  VertBlockMetaForTest() : VertBlockMeta() {}
-
-  std::vector<uint64_t>& Offset() { return offsets_; }
-
-  uint8_t StartBitWidth() { return start_bitwidth_; }
-
-  uint8_t* Starts() { return starts_; }
-};
-
 TEST(VertBlock, Next) {
   Options option;
   VertBlockBuilder builder(&option);

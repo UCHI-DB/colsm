@@ -10,7 +10,7 @@
 
 namespace colsm {
 
-VertSectionBuilder::VertSectionBuilder(EncodingType& enc_type,
+VertSectionBuilder::VertSectionBuilder(EncodingType enc_type,
                                        int32_t start_value)
     : value_enc_type_(value_enc_type_), start_value_(start_value) {
   key_encoder_ = u32::EncodingFactory::Get(BITPACK).encoder();

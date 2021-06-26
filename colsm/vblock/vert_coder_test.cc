@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include <immintrin.h>
 #include <sstream>
+#include <cstdlib>
 
 using namespace colsm;
 using namespace colsm::encoding;
@@ -107,7 +108,7 @@ TEST(U64Plain, EncDec) {
 TEST(U32Plain, EncDec) {
   Encoding& plainEncoding = u32::EncodingFactory::Get(PLAIN);
   auto encoder = plainEncoding.encoder();
-  auto decoder = plainEncoding.decoder();
+//  auto decoder = plainEncoding.decoder();
 
   uint32_t size = 0;
   for (int i = 0; i < 10000; ++i) {
@@ -119,13 +120,28 @@ TEST(U32Plain, EncDec) {
   uint8_t* buffer = new uint8_t[size];
   encoder->Dump(buffer);
 
-  decoder->Attach(buffer);
-  for (int i = 0; i < 10000; ++i) {
-    uint32_t expect = i;
-    auto decoded = decoder->DecodeU32();
-    ASSERT_EQ(expect, decoded);
-  }
+//  decoder->Attach(buffer);
+//  for (int i = 0; i < 10000; ++i) {
+//    uint32_t expect = i;
+//    auto decoded = decoder->DecodeU32();
+//    ASSERT_EQ(expect, decoded);
+//  }
 
+  srand(time(0));
+
+  int current = 0;
+  auto decoderstub = plainEncoding.decoder();
+  auto decoder2= decoderstub.get();
+  decoder2->Attach(buffer);
+  while(current < 10000) {
+      uint32_t skip = rand()%100;
+      current += skip;
+      if(current < 10000) {
+          decoder2->Skip(skip);
+          auto result = decoder2->DecodeU32();
+          ASSERT_EQ(current, result);
+      }
+  }
   delete[] buffer;
 }
 

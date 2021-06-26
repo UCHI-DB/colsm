@@ -211,16 +211,9 @@ class VertBlockCore::VIter : public Iterator {
 
   uint32_t section_index_ = -1;
   VertSection section_;
-
   uint32_t entry_index_ = -1;
-  // To support m256i assignment, make sure the variable is aligned
-  alignas(64) __m256i unpacked_;
-  uint32_t group_index_ = -1;
-  uint32_t group_offset_ = 8;
 
-  sboost::Unpacker* unpacker_;
-
-  int intkey_;
+  char key_buffer_[12];
   Slice key_;
   Slice value_;
 
@@ -229,30 +222,20 @@ class VertBlockCore::VIter : public Iterator {
   void ReadSection(int sec_index) {
     section_index_ = sec_index;
     section_.Read(data_pointer_ + meta_.SectionOffset(section_index_));
-    entry_index_ = -1;
-    group_index_ = -1;
-    group_offset_ = 8;
   }
 
-  void LoadGroup() {
-    unpacker_ = sboost::unpackers[section_.BitWidth()];
-    auto group_start = section_.KeysData() + group_index_ * section_.BitWidth();
-    auto unpacked = unpacker_->unpack(group_start);
-    unpacked_ = unpacked;
-  }
-
-  void LoadEntry() {
-    auto entry = (unpacked_[group_offset_ / 2] >> (32 * (group_offset_ & 1))) &
-                 (uint32_t)-1;
-    intkey_ = entry + section_.StartValue();
+  void ComposeKeyValue() {
+      *((int32_t*)key_buffer_) = section_.StartValue()+section_.KeyDecoder()->DecodeU32();
+      auto seq = section_.SeqDecoder()->DecodeU64();
+      auto type = section_.TypeDecoder()->DecodeU8();
+      *((uint64_t*)(key_buffer_+4)) = (seq << 8) + type;
+      value_ = section_.ValueDecoder()->Decode();
   }
 
  public:
   VIter(const Comparator* comparator, VertBlockMeta& meta, const uint8_t* data)
-      : comparator_(comparator),
-        key_((const char*)&intkey_, 4),
-        meta_(meta),
-        data_pointer_(data) {
+      : comparator_(comparator), meta_(meta),
+        data_pointer_(data),key_(key_buffer_,12) {
     ReadSection(0);
   }
 
@@ -271,17 +254,12 @@ class VertBlockCore::VIter : public Iterator {
       status_ = Status::NotFound(target);
     } else {
       // Seek to the position, extract the keys and values
-      // TODO Switch to a reader and maintain current unpacking location
-      // Unpack 8 entries at a time, read bit_width_ bytes at a time
-      group_index_ = entry_index_ >> 3;
-      group_offset_ = entry_index_ & 0x7;
-      LoadGroup();
-      LoadEntry();
 
-      // Sequential skip to value
-      auto decoder = section_.ValueDecoder();
-      decoder->Skip(entry_index_);
-      value_ = decoder->Decode();
+      section_.KeyDecoder()->Skip(entry_index_);
+      section_.SeqDecoder()->Skip(entry_index_);
+      section_.TypeDecoder()->Skip(entry_index_);
+      section_.ValueDecoder()->Skip(entry_index_);
+      ComposeKeyValue();
     }
   }
 
@@ -301,25 +279,13 @@ class VertBlockCore::VIter : public Iterator {
       if (section_index_ < meta_.NumSection() - 1) {
         ReadSection(section_index_ + 1);
         entry_index_ = 0;
-        group_index_ = -1;
-        group_offset_ = 8;
       } else {
         section_index_++;
         // No more element
         return;
       }
     }
-
-    group_offset_++;
-    if (group_offset_ >= 8) {
-      group_index_++;
-      group_offset_ = 0;
-      LoadGroup();
-    }
-    LoadEntry();
-
-    auto decoder = section_.ValueDecoder();
-    value_ = decoder->Decode();
+    ComposeKeyValue();
   }
 
   void Prev() override {
