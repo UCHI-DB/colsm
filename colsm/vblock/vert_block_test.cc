@@ -240,6 +240,7 @@ TEST(VertBlock, Next) {
     EXPECT_EQ(12, value.size()) << i;
     EXPECT_EQ(i, *((int32_t*)value.data())) << i;
   }
+  delete ite;
 }
 
 TEST(VertBlock, Seek) {
@@ -274,8 +275,11 @@ TEST(VertBlock, Seek) {
     EXPECT_EQ(12, key.size());
     ParseInternalKey(key, &pkey);
     EXPECT_EQ(10, *((int32_t*)pkey.user_key.data()));
-    EXPECT_EQ(4, value.size());
+    EXPECT_EQ(1350, pkey.sequence);
+    EXPECT_EQ(ValueType::kTypeValue,pkey.type);
+    EXPECT_EQ(12, value.size());
     EXPECT_EQ(10, *((int32_t*)value.data()));
+    delete ite;
   }
 
   {
@@ -284,6 +288,8 @@ TEST(VertBlock, Seek) {
     Slice target((const char*)&target_key, 4);
     ite->Seek(target);
     EXPECT_TRUE(ite->status().IsNotFound());
+
+    delete ite;
   }
 }
 
@@ -318,15 +324,18 @@ TEST(VertBlockTest, SeekThenNext) {
     while (ite->Valid()) {
       auto key = ite->key();
       auto value = ite->value();
-      EXPECT_EQ(12, key.size());
+      ASSERT_EQ(12, key.size());
       ParseInternalKey(key, &pkey);
-      EXPECT_EQ((5 + i) * 2, *((int32_t*)pkey.user_key.data())) << i;
-      EXPECT_EQ(4, value.size());
-      EXPECT_EQ((5 + i) * 2, *((int32_t*)value.data())) << i;
+      ASSERT_EQ((5 + i) * 2, *((int32_t*)pkey.user_key.data())) << i;
+      ASSERT_EQ(1350,pkey.sequence);
+      ASSERT_EQ(ValueType::kTypeValue,pkey.type);
+      ASSERT_EQ(12, value.size());
+      ASSERT_EQ((5 + i) * 2, *((int32_t*)value.data())) << i;
       ite->Next();
       i++;
     }
-    EXPECT_EQ(i, 995);
+    EXPECT_EQ(i, 999995);
+    delete ite;
   }
 }
 
