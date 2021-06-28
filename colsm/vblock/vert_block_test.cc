@@ -233,11 +233,11 @@ TEST(VertBlock, Next) {
     EXPECT_EQ(12, key.size()) << i;
     ParseInternalKey(key, &pkey);
     EXPECT_EQ(i, *((int32_t*)pkey.user_key.data())) << i;
-    EXPECT_EQ(4, *((int32_t*)pkey.user_key.size())) << i;
+    EXPECT_EQ(4, pkey.user_key.size()) << i;
     EXPECT_EQ(1350, pkey.sequence);
     EXPECT_EQ(ValueType::kTypeValue, pkey.type);
 
-    EXPECT_EQ(4, value.size()) << i;
+    EXPECT_EQ(12, value.size()) << i;
     EXPECT_EQ(i, *((int32_t*)value.data())) << i;
   }
 }

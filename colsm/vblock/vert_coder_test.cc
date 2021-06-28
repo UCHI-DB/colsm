@@ -72,7 +72,7 @@ TEST(StrLength, EncDec) {
 
   std::stringstream ss;
 
-  uint32_t size = 4;
+  uint32_t size = 8;
   for (int i = 0; i < 10000; ++i) {
     ss.str(std::string());
     ss << "num" << i;
@@ -83,6 +83,7 @@ TEST(StrLength, EncDec) {
     ASSERT_EQ(size, encoder->EstimateSize());
   }
   encoder->Close();
+  ASSERT_EQ(size,encoder->EstimateSize());
   uint8_t* buffer = new uint8_t[encoder->EstimateSize()];
   encoder->Dump(buffer);
 

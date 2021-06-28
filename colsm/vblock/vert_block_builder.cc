@@ -66,7 +66,7 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   *(pointer++) = RUNLENGTH;
   *((uint32_t*)pointer) = value_size;
   pointer += 4;
-  *(pointer++) = PLAIN;
+  *(pointer++) = value_enc_type_;
 
   key_encoder_->Dump(pointer);
   pointer += key_size;

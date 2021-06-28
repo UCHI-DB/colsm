@@ -12,7 +12,7 @@
 using namespace colsm;
 
 TEST(VertSectionBuilder, Write) {
-  VertSectionBuilder section(EncodingType::PLAIN, 3);
+  VertSectionBuilder section(EncodingType::LENGTH, 3);
   int ik;
   Slice key((char*)&ik, 4);
   char v[4];
@@ -24,7 +24,7 @@ TEST(VertSectionBuilder, Write) {
   section.Close();
   auto size = section.EstimateSize();
   // 137 data, 800 value, 800 seq, 4 type, 28 additional
-  EXPECT_EQ(1769, size);
+  EXPECT_EQ(1777, size);
   EXPECT_EQ(100, section.NumEntry());
   uint8_t buffer[size];
   memset(buffer, 0, size);
@@ -45,9 +45,9 @@ TEST(VertSectionBuilder, Write) {
   EXPECT_EQ(4, *(uint32_t*)pointer);
   pointer += 4;
   EXPECT_EQ(RUNLENGTH, *(uint8_t*)pointer++);
-  EXPECT_EQ(800, *(uint32_t*)pointer);
+  EXPECT_EQ(808, *(uint32_t*)pointer);
   pointer += 4;
-  EXPECT_EQ(PLAIN, *(uint8_t*)pointer++);
+  EXPECT_EQ(LENGTH, *(uint8_t*)pointer++);
 }
 
 TEST(VertSectionBuilder, EstimateSize) {
@@ -97,9 +97,12 @@ TEST(VertBlockBuilder, Build) {
   }
   auto result = builder.Finish();
   // section_size = 128, 8 sections
-  // meta = 9 + 9 * 8 + 4 * 9/8 = 86
-  // section =
-  EXPECT_EQ(9117, result.size());
+  // meta = 9 + 8 * 8 + 16 = 89
+  // section = 28 + 145 + 1024 + 4 + 2056 = 3257
+  // last_section size 104
+  // section = 28 + 124 + 832 + 4 + 1672 = 2660
+  // MAGIC: 4
+  EXPECT_EQ(25552, result.size());
 
   uint8_t* data = (uint8_t*)result.data();
 
@@ -111,14 +114,9 @@ TEST(VertBlockBuilder, Build) {
   EXPECT_EQ(8, meta.NumSection());
   auto& offset = meta.Offset();
   EXPECT_EQ(8, offset.size());
-  EXPECT_EQ(0, offset[0]);
-  EXPECT_EQ(1154, offset[1]);
-  EXPECT_EQ(1154 * 2, offset[2]);
-  EXPECT_EQ(1154 * 3, offset[3]);
-  EXPECT_EQ(1154 * 4, offset[4]);
-  EXPECT_EQ(1154 * 5, offset[5]);
-  EXPECT_EQ(1154 * 6, offset[6]);
-  EXPECT_EQ(1154 * 7, offset[7]);
+  for (auto i = 0; i < 8; ++i) {
+    EXPECT_EQ(3257 * i, offset[i]);
+  }
 
   EXPECT_EQ(10, meta.StartBitWidth());
 }
@@ -130,17 +128,39 @@ TEST(VertBlockBuilder, Reset) {
 
   VertBlockBuilder builder(&options);
 
-  int intkey = 0;
-  std::string strvalue = "value";
-  Slice key((const char*)&intkey, 4);
-  Slice value((const char*)strvalue.data(), strvalue.size());
+  char buffer[12];
+  Slice key(buffer, 12);
 
   for (int repeat = 0; repeat < 5; ++repeat) {
-    for (int i = 0; i < 100; ++i) {
-      intkey = i;
-      builder.Add(key, value);
+    for (uint32_t i = 0; i < 1000; ++i) {
+      *((uint32_t*)buffer) = i;
+      *((uint64_t*)(buffer + 4)) = (100 << 8) + ValueType::kTypeValue;
+      builder.Add(key, key);
     }
-    builder.Finish();
+    auto result = builder.Finish();
+    // section_size = 128, 8 sections
+    // meta = 9 + 8 * 8 + 16 = 89
+    // section = 28 + 145 + 1024 + 4 + 2048 = 3249
+    // last_section size 104
+    // section = 28 + 124 + 832 + 4 + 1664 = 2652
+    // MAGIC: 4
+    EXPECT_EQ(25488, result.size()) << repeat;
+
+    uint8_t* data = (uint8_t*)result.data();
+
+    uint32_t mgc = *((uint32_t*)(result.data() + result.size() - 4));
+    EXPECT_EQ(mgc, MAGIC);
+
+    VertBlockMetaForTest meta;
+    meta.Read(data);
+    EXPECT_EQ(8, meta.NumSection());
+    auto& offset = meta.Offset();
+    EXPECT_EQ(8, offset.size());
+    for (auto i = 0; i < 8; ++i) {
+      EXPECT_EQ(3249 * i, offset[i]);
+    }
+
+    EXPECT_EQ(10, meta.StartBitWidth());
     builder.Reset();
   }
 }

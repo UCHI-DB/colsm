@@ -147,9 +147,11 @@ class LengthEncoder : public Encoder {
   std::string buffer_;
 
  public:
+  LengthEncoder() { length_.push_back(0); }
+
   void Encode(const Slice& value) override {
-    length_.push_back(offset_);
     offset_ += value.size();
+    length_.push_back(offset_);
     buffer_.append(value.data(), value.size());
   }
 
@@ -157,16 +159,16 @@ class LengthEncoder : public Encoder {
     return length_.size() * 4 + buffer_.size() + 4;
   }
 
-  void Close() override { length_.push_back(offset_); }
+  void Close() override {}
 
   void Dump(uint8_t* output) override {
-    auto total_len = length_.size() * 4;
     auto pointer = output;
 
-    *((uint32_t*)pointer) = total_len;
+    auto len_size = sizeof(uint32_t) * length_.size();
+    *((uint32_t*)pointer) = len_size;
     pointer += 4;
-    memcpy(pointer, length_.data(), total_len);
-    pointer += total_len;
+    memcpy(pointer, length_.data(), len_size);
+    pointer += len_size;
     memcpy(pointer, buffer_.data(), buffer_.size());
   }
 };
@@ -179,9 +181,9 @@ class LengthDecoder : public Decoder {
 
  public:
   void Attach(const uint8_t* buffer) override {
-    uint32_t length_len = *((uint32_t*)buffer);
+    uint32_t data_pos = *((uint32_t*)buffer);
     length_pointer_ = (uint32_t*)(buffer + 4);
-    data_base_ = buffer + 4 + length_len;
+    data_base_ = buffer + data_pos + 4;
     data_pointer_ = data_base_;
   }
 
