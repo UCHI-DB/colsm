@@ -299,7 +299,10 @@ class BitpackEncoder : public Encoder {
 
   uint32_t EstimateSize() override {
     uint32_t bit_width = 32 - _lzcnt_u32(buffer_.back());
-    return 1 + ((bit_width * buffer_.size() + 63) >> 6 << 3);
+    // The buffer should be large enough for a 256 bit read after valid data
+    uint32_t buffer_group_size = (buffer_.size() + 7) >> 3;
+    uint32_t size = 1 + bit_width * buffer_group_size + 32;
+    return size;
   }
 
   void Close() override {}
@@ -314,6 +317,7 @@ class BitpackEncoder : public Encoder {
 
 class BitpackDecoder : public Decoder {
  private:
+  const uint8_t* base_;
   uint8_t* pointer_;
   uint8_t bit_width_;
   uint8_t index_;
@@ -328,6 +332,7 @@ class BitpackDecoder : public Decoder {
 
  public:
   void Attach(const uint8_t* buffer) override {
+    base_ = buffer;
     bit_width_ = *buffer;
     pointer_ = (uint8_t*)buffer + 1;
     unpacker_ = sboost::unpackers[bit_width_];
@@ -340,7 +345,9 @@ class BitpackDecoder : public Decoder {
     index_ &= 0x7;
     if (group_index > 0) {
       pointer_ += (group_index - 1) * bit_width_;
+      auto index_back = index_;
       LoadNextGroup();
+      index_ = index_back;
     }
   }
 
@@ -402,14 +409,11 @@ class PlainDecoder : public Decoder {
 
 class RleEncoder : public Encoder {
  private:
-  std::vector<uint8_t> buffer_;
+  std::vector<uint32_t> buffer_;
   uint8_t last_value_ = 0xFF;
   uint32_t last_counter_ = 0;
 
-  void writeEntry() {
-    buffer_.push_back(last_value_);
-    write32(buffer_, last_counter_);
-  }
+  void writeEntry() { buffer_.push_back((last_counter_ << 8) + last_value_); }
 
  public:
   void Encode(const uint8_t& entry) override {
@@ -424,33 +428,37 @@ class RleEncoder : public Encoder {
     }
   }
 
-  uint32_t EstimateSize() override { return buffer_.size() + 5; }
+  uint32_t EstimateSize() override {
+    return (buffer_.size() + (last_counter_ != 0)) * sizeof(uint32_t);
+  }
 
   void Close() override {
     if (last_counter_ > 0) {
       writeEntry();
+      last_counter_ = 0;
     }
   }
 
   void Dump(uint8_t* output) override {
-    memcpy(output, buffer_.data(), buffer_.size());
+    memcpy(output, buffer_.data(), buffer_.size() * sizeof(uint32_t));
   }
 };
 
 class RleDecoder : public Decoder {
  private:
   uint8_t value_;
-  uint32_t counter_;
-  uint8_t* pointer_;
+  uint32_t counter_ = 0;
+  uint32_t* pointer_;
 
   inline void readEntry() {
-    value_ = *(pointer_++);
-    counter_ = read32(pointer_);
+    auto result = *(pointer_++);
+    value_ = result & 0xFF;
+    counter_ = result >> 8;
   }
 
  public:
   void Attach(const uint8_t* buffer) override {
-    pointer_ = (uint8_t*)buffer;
+    pointer_ = (uint32_t*)buffer;
     readEntry();
   }
 
@@ -464,11 +472,11 @@ class RleDecoder : public Decoder {
   }
 
   uint8_t DecodeU8() override {
-    auto result = value_;
-    counter_--;
     if (counter_ == 0) {
       readEntry();
     }
+    auto result = value_;
+    counter_--;
     return result;
   }
 };
@@ -498,11 +506,14 @@ class RleVarIntEncoder : public Encoder {
     }
   }
 
-  uint32_t EstimateSize() override { return buffer_.size() + 5; }
+  uint32_t EstimateSize() override {
+    return buffer_.size() + (last_counter_ != 0) * 5;
+  }
 
   void Close() override {
     if (last_counter_ > 0) {
       writeEntry();
+      last_counter_ = 0;
     }
   }
 
@@ -514,7 +525,7 @@ class RleVarIntEncoder : public Encoder {
 class RleVarIntDecoder : public Decoder {
  private:
   uint8_t value_;
-  uint32_t counter_;
+  uint32_t counter_ = 0;
   uint8_t* pointer_;
 
   void readEntry() {
@@ -523,10 +534,7 @@ class RleVarIntDecoder : public Decoder {
   }
 
  public:
-  void Attach(const uint8_t* buffer) override {
-    pointer_ = (uint8_t*)buffer;
-    readEntry();
-  }
+  void Attach(const uint8_t* buffer) override { pointer_ = (uint8_t*)buffer; }
 
   void Skip(uint32_t offset) override {
     auto remain = offset;
@@ -538,12 +546,11 @@ class RleVarIntDecoder : public Decoder {
   }
 
   uint8_t DecodeU8() override {
-    auto result = value_;
-    counter_--;
     if (counter_ == 0) {
       readEntry();
     }
-    return result;
+    counter_--;
+    return value_;
   }
 };
 

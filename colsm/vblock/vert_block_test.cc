@@ -154,7 +154,7 @@ TEST(VertSection, Find) {
   *(int32_t*)pointer = 234;
   pointer += 4;
 
-  *(pointer+4) = BITPACK;
+  *(pointer + 4) = BITPACK;
   pointer += 20;
 
   *(uint8_t*)pointer = 8;
@@ -184,7 +184,7 @@ TEST(VertSection, FindStart) {
   *(int32_t*)pointer = 234;
   pointer += 4;
 
-  *(pointer+4) = BITPACK;
+  *(pointer + 4) = BITPACK;
   pointer += 20;
 
   *(uint8_t*)pointer = 8;
@@ -209,10 +209,11 @@ TEST(VertBlock, Next) {
   VertBlockBuilder builder(&option);
   builder.value_encoding_ = EncodingType::LENGTH;
 
-  int buffer = 0;
-  Slice key((const char*)&buffer, 4);
+  char buffer[12];
+  Slice key((const char*)buffer, 12);
   for (uint32_t i = 0; i < 1000000; ++i) {
-    buffer = i;
+    *((int32_t*)buffer) = i;
+    EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
     builder.Add(key, key);
   }
   auto result = builder.Finish();
@@ -223,13 +224,19 @@ TEST(VertBlock, Next) {
   content.heap_allocated = false;
   VertBlockCore block(content);
 
+  ParsedInternalKey pkey;
   auto ite = block.NewIterator(NULL);
   for (int i = 0; i < 1000000; ++i) {
     ite->Next();
     auto key = ite->key();
     auto value = ite->value();
-    EXPECT_EQ(4, key.size()) << i;
-    EXPECT_EQ(i, *((int32_t*)key.data())) << i;
+    EXPECT_EQ(12, key.size()) << i;
+    ParseInternalKey(key, &pkey);
+    EXPECT_EQ(i, *((int32_t*)pkey.user_key.data())) << i;
+    EXPECT_EQ(4, *((int32_t*)pkey.user_key.size())) << i;
+    EXPECT_EQ(1350, pkey.sequence);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
+
     EXPECT_EQ(4, value.size()) << i;
     EXPECT_EQ(i, *((int32_t*)value.data())) << i;
   }
@@ -240,11 +247,12 @@ TEST(VertBlock, Seek) {
   VertBlockBuilder builder(&option);
   builder.value_encoding_ = EncodingType::LENGTH;
 
-  int buffer = 0;
-  Slice write_key((const char*)&buffer, 4);
-  for (uint32_t i = 0; i < 1000; ++i) {
-    buffer = 2 * i;
-    builder.Add(write_key, write_key);
+  char buffer[12];
+  Slice key((const char*)buffer, 12);
+  for (uint32_t i = 0; i < 1000000; ++i) {
+    *((int32_t*)buffer) = 2 * i;
+    EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
+    builder.Add(key, key);
   }
   auto result = builder.Finish();
 
@@ -254,6 +262,7 @@ TEST(VertBlock, Seek) {
   content.heap_allocated = false;
   VertBlockCore block(content);
 
+  ParsedInternalKey pkey;
   {
     auto ite = block.NewIterator(NULL);
     int target_key = 10;
@@ -262,8 +271,9 @@ TEST(VertBlock, Seek) {
     EXPECT_TRUE(ite->status().ok());
     auto key = ite->key();
     auto value = ite->value();
-    EXPECT_EQ(4, key.size());
-    EXPECT_EQ(10, *((int32_t*)key.data()));
+    EXPECT_EQ(12, key.size());
+    ParseInternalKey(key, &pkey);
+    EXPECT_EQ(10, *((int32_t*)pkey.user_key.data()));
     EXPECT_EQ(4, value.size());
     EXPECT_EQ(10, *((int32_t*)value.data()));
   }
@@ -282,11 +292,12 @@ TEST(VertBlockTest, SeekThenNext) {
   VertBlockBuilder builder(&option);
   builder.value_encoding_ = EncodingType::LENGTH;
 
-  int buffer = 0;
-  Slice write_key((const char*)&buffer, 4);
-  for (uint32_t i = 0; i < 1000; ++i) {
-    buffer = 2 * i;
-    builder.Add(write_key, write_key);
+  char buffer[12];
+  Slice key((const char*)buffer, 12);
+  for (uint32_t i = 0; i < 1000000; ++i) {
+    *((int32_t*)buffer) = 2 * i;
+    EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
+    builder.Add(key, key);
   }
   auto result = builder.Finish();
 
@@ -295,6 +306,7 @@ TEST(VertBlockTest, SeekThenNext) {
   content.cachable = false;
   content.heap_allocated = false;
   VertBlockCore block(content);
+  ParsedInternalKey pkey;
 
   {
     auto ite = block.NewIterator(NULL);
@@ -306,8 +318,9 @@ TEST(VertBlockTest, SeekThenNext) {
     while (ite->Valid()) {
       auto key = ite->key();
       auto value = ite->value();
-      EXPECT_EQ(4, key.size());
-      EXPECT_EQ((5 + i) * 2, *((int32_t*)key.data())) << i;
+      EXPECT_EQ(12, key.size());
+      ParseInternalKey(key, &pkey);
+      EXPECT_EQ((5 + i) * 2, *((int32_t*)pkey.user_key.data())) << i;
       EXPECT_EQ(4, value.size());
       EXPECT_EQ((5 + i) * 2, *((int32_t*)value.data())) << i;
       ite->Next();

@@ -4,26 +4,27 @@
 
 #include "vert_block_builder.h"
 
+#include <byteutils.h>
 #include <colsm/comparators.h>
 #include <gtest/gtest.h>
-#include <byteutils.h>
 #include <immintrin.h>
 
 using namespace colsm;
 
 TEST(VertSectionBuilder, Write) {
-  VertSectionBuilder section(EncodingType::PLAIN,3);
+  VertSectionBuilder section(EncodingType::PLAIN, 3);
   int ik;
-  Slice key((char*)&ik,4);
+  Slice key((char*)&ik, 4);
   char v[4];
   Slice value(v, 4);  // Dummy
   for (auto i = 0; i < 100; ++i) {
-    ik = i*2+3;
-    section.Add(ParsedInternalKey(key,100,ValueType::kTypeValue), value);
+    ik = i * 2 + 3;
+    section.Add(ParsedInternalKey(key, 100, ValueType::kTypeValue), value);
   }
+  section.Close();
   auto size = section.EstimateSize();
-  // 114 data, 800 value
-  EXPECT_EQ(914, size);
+  // 137 data, 800 value, 800 seq, 4 type, 28 additional
+  EXPECT_EQ(1769, size);
   EXPECT_EQ(100, section.NumEntry());
   uint8_t buffer[size];
   memset(buffer, 0, size);
@@ -33,62 +34,53 @@ TEST(VertSectionBuilder, Write) {
   auto pointer = buffer;
   EXPECT_EQ(100, *(uint32_t*)pointer);
   pointer += 4;
-
   EXPECT_EQ(3, *(int32_t*)pointer);
   pointer += 4;
-
-  EXPECT_EQ(8, *(uint8_t*)pointer);
-  pointer++;
-
-  uint32_t plain_buffer[100];
-  uint8_t packed_buffer[104];
-  memset(packed_buffer, 0, 104);
-  for (auto i = 0; i < 100; ++i) {
-    plain_buffer[i] = 2 * i;
-  }
-
-  sboost::byteutils::bitpack(plain_buffer, 100, 8, packed_buffer);
-
-  for (auto i = 0; i < 104; ++i) {
-    EXPECT_EQ(packed_buffer[i], (uint8_t)(*pointer++));
-  }
+  EXPECT_EQ(137, *(uint32_t*)pointer);
+  pointer += 4;
+  EXPECT_EQ(BITPACK, *(uint8_t*)pointer++);
+  EXPECT_EQ(800, *(uint32_t*)pointer);
+  pointer += 4;
+  EXPECT_EQ(PLAIN, *(uint8_t*)pointer++);
+  EXPECT_EQ(4, *(uint32_t*)pointer);
+  pointer += 4;
+  EXPECT_EQ(RUNLENGTH, *(uint8_t*)pointer++);
+  EXPECT_EQ(800, *(uint32_t*)pointer);
+  pointer += 4;
+  EXPECT_EQ(PLAIN, *(uint8_t*)pointer++);
 }
 
 TEST(VertSectionBuilder, EstimateSize) {
-  VertSectionBuilder section(EncodingType::PLAIN,0);
-    int ik;
-    Slice key((char*)&ik,4);
+  VertSectionBuilder section(EncodingType::PLAIN, 0);
+
+  int ik;
+  Slice key((char*)&ik, 4);
   std::string strvalue = "it is a good day";
   Slice value(strvalue.data(), strvalue.size());
   for (int i = 0; i < 1000; ++i) {
-      ik = i;
-    section.Add(ParsedInternalKey(key,100,ValueType::kTypeValue), value);
+    ik = i;
+    section.Add(ParsedInternalKey(key, 100, ValueType::kTypeValue), value);
 
     int bitwidth = 32 - _lzcnt_u32(i);
     int expected_value_size = (i + 1) * (4 + strvalue.size());
-    int bitpack_size = (bitwidth * (i + 1) + 63) >> 6 << 3;
+    int bitpack_size = 33 + ((i + 1 + 7) >> 3) * bitwidth;
+    int seq_size = 8 * (i + 1);
+    int type_size = 4;
 
-    EXPECT_EQ(10 + bitpack_size + expected_value_size, section.EstimateSize());
+    EXPECT_EQ(28 + bitpack_size + expected_value_size + seq_size + type_size,
+              section.EstimateSize());
   }
 }
 
-TEST(VertBlockBuilder, Add) {
-  Options options;
-  auto comparator = intComparator();
-  options.comparator = comparator.get();
-
-  VertBlockBuilder builder(&options);
-}
-
 class VertBlockMetaForTest : public VertBlockMeta {
-public:
-    VertBlockMetaForTest() : VertBlockMeta() {}
+ public:
+  VertBlockMetaForTest() : VertBlockMeta() {}
 
-    std::vector<uint64_t>& Offset() { return offsets_; }
+  std::vector<uint64_t>& Offset() { return offsets_; }
 
-    uint8_t StartBitWidth() { return start_bitwidth_; }
+  uint8_t StartBitWidth() { return start_bitwidth_; }
 
-    uint8_t* Starts() { return starts_; }
+  uint8_t* Starts() { return starts_; }
 };
 
 TEST(VertBlockBuilder, Build) {
@@ -96,10 +88,11 @@ TEST(VertBlockBuilder, Build) {
   VertBlockBuilder builder(&option);
   builder.value_encoding_ = EncodingType::LENGTH;
 
-  int buffer = 0;
-  Slice key((const char*)&buffer, 4);
+  char buffer[12];
+  Slice key(buffer, 12);
   for (uint32_t i = 0; i < 1000; ++i) {
-    buffer = i;
+    *((uint32_t*)buffer) = i;
+    *((uint64_t*)(buffer + 4)) = (100 << 8) + ValueType::kTypeValue;
     builder.Add(key, key);
   }
   auto result = builder.Finish();
@@ -152,7 +145,7 @@ TEST(VertBlockBuilder, Reset) {
   }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

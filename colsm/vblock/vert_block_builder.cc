@@ -12,7 +12,7 @@ namespace colsm {
 
 VertSectionBuilder::VertSectionBuilder(EncodingType enc_type,
                                        int32_t start_value)
-    : value_enc_type_(value_enc_type_), start_value_(start_value) {
+    : num_entry_(0), value_enc_type_(enc_type), start_value_(start_value) {
   key_encoder_ = u32::EncodingFactory::Get(BITPACK).encoder();
   seq_encoder_ = u64::EncodingFactory::Get(PLAIN).encoder();
   type_encoder_ = u8::EncodingFactory::Get(RUNLENGTH).encoder();

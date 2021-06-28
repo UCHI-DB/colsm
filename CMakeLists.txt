@@ -452,6 +452,7 @@ if(LEVELDB_BUILD_BENCHMARKS)
 
   colsm_benchmark(vert_block_read_benchmark colsm/vblock/vert_block_read_benchmark.cc)
   colsm_benchmark(vert_block_merge_benchmark colsm/vblock/vert_block_merge_benchmark.cc)
+  colsm_benchmark(vert_coder_benchmark colsm/vblock/vert_coder_benchmark.cc)
 
 
   function(leveldb_benchmark bench_file)

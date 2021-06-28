@@ -5,6 +5,7 @@
 #include "vert_block.h"
 
 #include <immintrin.h>
+#include <util/coding.h>
 
 #include "byteutils.h"
 #include "sboost.h"
@@ -228,7 +229,7 @@ class VertBlockCore::VIter : public Iterator {
       *((int32_t*)key_buffer_) = section_.StartValue()+section_.KeyDecoder()->DecodeU32();
       auto seq = section_.SeqDecoder()->DecodeU64();
       auto type = section_.TypeDecoder()->DecodeU8();
-      *((uint64_t*)(key_buffer_+4)) = (seq << 8) + type;
+      EncodeFixed64(key_buffer_+4, (seq << 8) + type);
       value_ = section_.ValueDecoder()->Decode();
   }
 
