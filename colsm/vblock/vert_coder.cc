@@ -78,6 +78,14 @@ inline uint64_t readVar64(uint8_t*& pointer) {
   return result;
 }
 
+inline uint64_t zigzagEncoding(int64_t value) {
+  return (value << 1) ^ (value >> 63);
+}
+
+inline int64_t zigzagDecoding(uint64_t value) {
+  return (value >> 1) ^ -(value & 1);
+}
+
 template <class E, class D>
 class EncodingTemplate : public Encoding {
  public:
@@ -249,12 +257,89 @@ class PlainDecoder : public Decoder {
   uint64_t DecodeU64() override { return *(raw_pointer_++); }
 };
 
+/**
+ * Delta and RLE hybrid encoding
+ */
+class DeltaEncoder : public Encoder {
+ private:
+  std::vector<uint8_t> buffer_;
+
+  int64_t delta_prev_ = 0;
+  uint64_t rle_value_;
+  uint32_t rle_counter_ = 0;
+
+ public:
+  void Encode(const uint64_t& value) override {
+    auto delta = zigzagEncoding(value - delta_prev_);
+    if (rle_counter_ > 0) {
+      writeVar64(buffer_, rle_value_);
+      writeVar32(buffer_, rle_counter_);
+    }
+    rle_value_ = delta;
+    rle_counter_ = 1;
+    delta_prev_ = value;
+  }
+
+  uint32_t EstimateSize() override {
+    return buffer_.size() + (rle_counter_ != 0) * 12;
+  }
+
+  void Close() override {
+    writeVar64(buffer_, rle_value_);
+    writeVar32(buffer_, rle_counter_);
+    rle_counter_ = 0;
+  }
+
+  void Dump(uint8_t* output) override {
+    memcpy(output, buffer_.data(), buffer_.size());
+  }
+};
+
+class DeltaDecoder : public Decoder {
+ private:
+  uint64_t base_ = 0;
+  uint64_t rle_value_;
+  uint32_t rle_counter_ = 0;
+  uint8_t* pointer_;
+
+  void LoadEntry() {
+    rle_value_ = zigzagDecoding(readVar64(pointer_));
+    rle_counter_ = readVar32(pointer_);
+  }
+
+ public:
+  void Attach(const uint8_t* buffer) override { pointer_ = (uint8_t*)buffer; }
+
+  void Skip(uint32_t offset) override {
+    uint32_t remain = offset;
+    while (remain >= rle_counter_) {
+      remain -= rle_counter_;
+      base_ += rle_value_ * rle_counter_;
+      LoadEntry();
+    }
+    rle_counter_ -= remain;
+    base_ += rle_value_ * remain;
+  }
+
+  uint64_t DecodeU64() override {
+    if (rle_counter_ == 0) {
+      LoadEntry();
+    }
+    rle_counter_--;
+    base_ += rle_value_;
+    return base_;
+  }
+};
+
 EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
+EncodingTemplate<DeltaEncoder, DeltaDecoder> deltaEncoding;
 
 Encoding& EncodingFactory::Get(EncodingType encoding) {
   switch (encoding) {
     case PLAIN:
       return plainEncoding;
+    case DELTA:
+      return deltaEncoding;
     default:
       return plainEncoding;
   }
