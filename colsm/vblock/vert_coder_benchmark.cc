@@ -18,7 +18,7 @@ using namespace leveldb;
 using namespace colsm;
 using namespace colsm::encoding;
 
-void prepareData(std::vector<uint8_t>& buffer) {
+void prepareRLEData(std::vector<uint8_t>& buffer) {
   for (int i = 0; i < 100000; ++i) {
     buffer.push_back((i / 39) % 256);
   }
@@ -26,7 +26,7 @@ void prepareData(std::vector<uint8_t>& buffer) {
 
 void RLE(benchmark::State& state) {
   std::vector<uint8_t> buffer;
-  prepareData(buffer);
+  prepareRLEData(buffer);
 
   auto encoder = u8::EncodingFactory::Get(RUNLENGTH).encoder();
 
@@ -52,7 +52,7 @@ void RLE(benchmark::State& state) {
 
 void RLEVar(benchmark::State& state) {
   std::vector<uint8_t> buffer;
-  prepareData(buffer);
+  prepareRLEData(buffer);
 
   auto encoder = u8::EncodingFactory::Get(BITPACK).encoder();
 
@@ -76,5 +76,69 @@ void RLEVar(benchmark::State& state) {
   delete[] byte_buffer;
 }
 
-BENCHMARK(RLE);
-BENCHMARK(RLEVar);
+void prepareDeltaData(std::vector<uint64_t>& buffer) {
+  for (int i = 0; i < 100000; ++i) {
+    uint64_t value = i;
+    if (value % 117 == 0) {
+      value *= 1000;
+    }
+    buffer.push_back(value);
+  }
+}
+
+void PLAIN_64(benchmark::State& state) {
+  std::vector<uint64_t> buffer;
+  prepareDeltaData(buffer);
+
+  auto encoder = u64::EncodingFactory::Get(PLAIN).encoder();
+
+  //  encoder
+  for (auto& item : buffer) {
+    encoder->Encode(item);
+  }
+  encoder->Close();
+  auto size = encoder->EstimateSize();
+
+  uint8_t* byte_buffer = new uint8_t[size];
+  encoder->Dump(byte_buffer);
+
+  for (auto _ : state) {
+    auto decoder = u8::EncodingFactory::Get(PLAIN).decoder();
+    decoder->Attach(byte_buffer);
+    for (int i = 0; i < buffer.size(); ++i)
+      benchmark::DoNotOptimize(decoder->DecodeU64());
+  }
+
+  delete[] byte_buffer;
+}
+
+void DELTA_64(benchmark::State& state) {
+  std::vector<uint64_t> buffer;
+  prepareDeltaData(buffer);
+
+  auto encoder = u64::EncodingFactory::Get(DELTA).encoder();
+
+  //  encoder
+  for (auto& item : buffer) {
+    encoder->Encode(item);
+  }
+  encoder->Close();
+  auto size = encoder->EstimateSize();
+
+  uint8_t* byte_buffer = new uint8_t[size];
+  encoder->Dump(byte_buffer);
+
+  for (auto _ : state) {
+    auto decoder = u8::EncodingFactory::Get(DELTA).decoder();
+    decoder->Attach(byte_buffer);
+    for (int i = 0; i < buffer.size(); ++i)
+      benchmark::DoNotOptimize(decoder->DecodeU64());
+  }
+
+  delete[] byte_buffer;
+}
+
+BENCHMARK(PLAIN_64);
+BENCHMARK(DELTA_64);
+//BENCHMARK(RLE);
+//BENCHMARK(RLEVar);

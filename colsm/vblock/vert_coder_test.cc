@@ -83,7 +83,7 @@ TEST(StrLength, EncDec) {
     ASSERT_EQ(size, encoder->EstimateSize());
   }
   encoder->Close();
-  ASSERT_EQ(size,encoder->EstimateSize());
+  ASSERT_EQ(size, encoder->EstimateSize());
   uint8_t* buffer = new uint8_t[encoder->EstimateSize()];
   encoder->Dump(buffer);
 
@@ -151,6 +151,95 @@ TEST(U64Plain, EncDec) {
       decoder2->Skip(skip);
       auto result = decoder2->DecodeU64();
       ASSERT_EQ(current, result);
+      current++;
+    }
+  }
+
+  delete[] buffer;
+}
+
+uint8_t Var32Size(uint32_t value) {
+  if(value == 0) {
+    return 1;
+  }
+  auto bits = 32-_lzcnt_u32(value);
+  return (bits + 6) / 7;
+}
+
+uint8_t Var64Size(uint64_t value) {
+  if(value == 0) {
+    return 1;
+  }
+  auto bits = 64-_lzcnt_u64(value);
+  return (bits + 6) / 7;
+}
+
+uint64_t zigzagEncForTest(int64_t value) {
+  return (value << 1) ^ (value >> 63);
+}
+
+TEST(U64Delta, EncDec) {
+  Encoding& plainEncoding = u64::EncodingFactory::Get(DELTA);
+  auto encoder = plainEncoding.encoder();
+  auto decoder = plainEncoding.decoder();
+
+  uint32_t size = 0;
+  int64_t prev = 0;
+  uint64_t rle_value = 0;
+  uint32_t rle_counter = 0;
+  for (int i = 0; i < 10000; ++i) {
+    uint64_t value = i;
+    if (value % 15 == 0) {
+      value *= 100;
+    }
+    uint64_t delta = zigzagEncForTest((int64_t)value - prev);
+    if (delta != rle_value) {
+      if (rle_counter > 0) {
+        size += Var32Size(rle_counter);
+        size += Var64Size(rle_value);
+      }
+      rle_value = delta;
+      rle_counter = 1;
+    } else {
+      rle_counter++;
+    }
+
+    encoder->Encode((uint64_t)value);
+    ASSERT_EQ(size+((rle_counter!=0)?12:0), encoder->EstimateSize()) << i;
+
+    prev = value;
+  }
+  encoder->Close();
+  size = encoder->EstimateSize();
+  uint8_t* buffer = new uint8_t[size];
+  encoder->Dump(buffer);
+
+  decoder->Attach(buffer);
+  for (int i = 0; i < 10000; ++i) {
+    uint64_t expect = i;
+    if (expect % 15 == 0) {
+      expect *= 100;
+    }
+    auto decoded = decoder->DecodeU64();
+    ASSERT_EQ(expect, decoded);
+  }
+
+  srand(time(0));
+
+  int current = 0;
+  auto decoder2 = plainEncoding.decoder();
+  decoder2->Attach(buffer);
+  while (current < 10000) {
+    uint32_t skip = rand() % 100;
+    current += skip;
+    if (current < 10000) {
+      decoder2->Skip(skip);
+      auto result = decoder2->DecodeU64();
+      uint64_t value = current;
+      if(value %15 == 0) {
+        value *= 100;
+      }
+      ASSERT_EQ(value, result);
       current++;
     }
   }

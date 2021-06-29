@@ -271,12 +271,16 @@ class DeltaEncoder : public Encoder {
  public:
   void Encode(const uint64_t& value) override {
     auto delta = zigzagEncoding(value - delta_prev_);
-    if (rle_counter_ > 0) {
-      writeVar64(buffer_, rle_value_);
-      writeVar32(buffer_, rle_counter_);
+    if (delta != rle_value_) {
+      if (rle_counter_ > 0) {
+        writeVar64(buffer_, rle_value_);
+        writeVar32(buffer_, rle_counter_);
+      }
+      rle_value_ = delta;
+      rle_counter_ = 1;
+    } else {
+      rle_counter_++;
     }
-    rle_value_ = delta;
-    rle_counter_ = 1;
     delta_prev_ = value;
   }
 
