@@ -128,10 +128,10 @@ include_directories(
   "."
 )
 
-if(BUILD_SHARED_LIBS)
-  # Only export LEVELDB_EXPORT symbols from the shared library.
-  add_compile_options(-fvisibility=hidden)
-endif(BUILD_SHARED_LIBS)
+#if(BUILD_SHARED_LIBS)
+#  # Only export LEVELDB_EXPORT symbols from the shared library.
+#  add_compile_options(-fvisibility=hidden)
+#endif(BUILD_SHARED_LIBS)
 
 # Must be included before CMAKE_INSTALL_INCLUDEDIR is used.
 include(GNUInstallDirs)
@@ -441,15 +441,13 @@ if(LEVELDB_BUILD_BENCHMARKS)
   # Microbenchmarks
   build_gbenchmark()
 
-  set(LEVELDB_MICROBENCHMARK_LINK_OPTION benchmark::benchmark benchmark::benchmark_main Threads::Threads
-          leveldb)
+  set(LEVELDB_MICROBENCHMARK_LINK_OPTION leveldb benchmark::benchmark benchmark::benchmark_main Threads::Threads)
 
   # CoLSM Block Benchmark is different from LevelDB own benchmark
   function(colsm_benchmark colsm_benchmark_name colsm_benchmark_file)
     add_executable("${colsm_benchmark_name}" "${colsm_benchmark_file}")
     target_link_libraries(${colsm_benchmark_name} PRIVATE ${LEVELDB_MICROBENCHMARK_LINK_OPTION})
     target_compile_options(${colsm_benchmark_name} PUBLIC ${SBOOST_SIMD_FLAGS})
-    #target_compile_options(leveldb_block_benchmark PUBLIC "-O3")
   endfunction(colsm_benchmark)
 
   colsm_benchmark(vert_block_read_benchmark colsm/vblock/vert_block_read_benchmark.cc)
