@@ -91,10 +91,12 @@ void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
   offsets_.push_back(offset);
 }
 
-uint64_t VertBlockMeta::Search(int32_t value) {
-  auto target = value - start_min_;
-  return offsets_[section_packed(starts_, num_section_, start_bitwidth_,
-                                 target)];
+int32_t VertBlockMeta::Search(int32_t value) {
+  if (value < start_min_) {
+    return -1;
+  }
+  return section_packed(starts_, num_section_, start_bitwidth_,
+                        value - start_min_);
 }
 
 uint32_t VertBlockMeta::Read(const uint8_t* in) {
@@ -226,17 +228,20 @@ class VertBlockCore::VIter : public Iterator {
   }
 
   void ComposeKeyValue() {
-      *((int32_t*)key_buffer_) = section_.StartValue()+section_.KeyDecoder()->DecodeU32();
-      auto seq = section_.SeqDecoder()->DecodeU64();
-      auto type = section_.TypeDecoder()->DecodeU8();
-      EncodeFixed64(key_buffer_+4, (seq << 8) + type);
-      value_ = section_.ValueDecoder()->Decode();
+    *((int32_t*)key_buffer_) =
+        section_.StartValue() + section_.KeyDecoder()->DecodeU32();
+    auto seq = section_.SeqDecoder()->DecodeU64();
+    auto type = section_.TypeDecoder()->DecodeU8();
+    EncodeFixed64(key_buffer_ + 4, (seq << 8) + type);
+    value_ = section_.ValueDecoder()->Decode();
   }
 
  public:
   VIter(const Comparator* comparator, VertBlockMeta& meta, const uint8_t* data)
-      : comparator_(comparator), meta_(meta),
-        data_pointer_(data),key_(key_buffer_,12) {
+      : comparator_(comparator),
+        meta_(meta),
+        data_pointer_(data),
+        key_(key_buffer_, 12) {
     ReadSection(0);
   }
 
@@ -245,17 +250,20 @@ class VertBlockCore::VIter : public Iterator {
     int32_t target_key = *reinterpret_cast<const int32_t*>(target.data());
 
     auto new_section_index = meta_.Search(target_key);
+    if (new_section_index < 0) {
+      status_ = Status::NotFound(target);
+      return;
+    }
     if (new_section_index != section_index_) {
       ReadSection(new_section_index);
     }
 
-    entry_index_ = section_.Find(target_key);
+    entry_index_ = section_.FindStart(target_key);
     if (entry_index_ == -1) {
       // Not found
       status_ = Status::NotFound(target);
     } else {
       // Seek to the position, extract the keys and values
-
       section_.KeyDecoder()->Skip(entry_index_);
       section_.SeqDecoder()->Skip(entry_index_);
       section_.TypeDecoder()->Skip(entry_index_);
@@ -267,11 +275,13 @@ class VertBlockCore::VIter : public Iterator {
   void SeekToFirst() override {
     // Not supported
     status_ = Status::NotSupported(Slice("SeekToFirst Not Supported"));
+    assert(false);
   }
 
   void SeekToLast() override {
     // Not supported
     status_ = Status::NotSupported(Slice("SeekToLast Not Supported"));
+    assert(false);
   }
 
   void Next() override {
@@ -292,6 +302,7 @@ class VertBlockCore::VIter : public Iterator {
   void Prev() override {
     // Not supported
     status_ = Status::NotSupported(Slice("Prev Not Supported"));
+    assert(false);
   }
 
   bool Valid() const override {

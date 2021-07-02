@@ -5,6 +5,7 @@
 #include <iostream>
 #include <leveldb/db.h>
 #include <leveldb/filter_policy.h>
+#include <sstream>
 
 #include "colsm/comparators.h"
 
@@ -21,17 +22,16 @@ void write() {
   assert(status.ok());
 
   int intkey;
-  std::string strvalue = "demo value";
-
   leveldb::Slice key((const char*)&intkey, 4);
-  leveldb::Slice value(strvalue.data(), strvalue.size());
 
   leveldb::Status s;
 
   for (int i = 0; i < 100000; ++i) {
     intkey = i;
+    std::stringstream ss;
+    ss << "value " << i;
     if (s.ok()) {
-      s = db->Put(leveldb::WriteOptions(), key, value);
+      s = db->Put(leveldb::WriteOptions(), key, leveldb::Slice(ss.str()));
     } else {
       std::cerr << "Write failure" << '\n';
       break;
@@ -55,20 +55,18 @@ void read() {
   assert(status.ok());
 
   int intkey;
-  std::string strvalue = "demo value";
-
   leveldb::Slice key((const char*)&intkey, 4);
-  leveldb::Slice value(strvalue.data(), strvalue.size());
 
   leveldb::Status s;
 
-  for (int i = 0; i < 100000; ++i) {
+  for (int i = 128; i < 100000; ++i) {
     intkey = i;
+    std::string value;
+    s = db->Get(leveldb::ReadOptions(), key, &value);
     if (s.ok()) {
-      s = db->Put(leveldb::WriteOptions(), key, value);
+      std::cout << value << '\n';
     } else {
-      std::cerr << "Write failure" << '\n';
-      break;
+      std::cerr << "Error:" << i << '\n';
     }
   }
 
@@ -76,5 +74,4 @@ void read() {
   delete options.filter_policy;
 }
 
-int main() {}
-
+int main() { read(); }

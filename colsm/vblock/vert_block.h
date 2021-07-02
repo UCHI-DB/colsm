@@ -75,9 +75,10 @@ class VertBlockMeta {
   /**
    * Search for the first section containing the value
    * @param value
-   * @return index of the section
+   * @return index of the section,
+   * -1 if not in range
    */
-  uint64_t Search(int32_t value);
+  int32_t Search(int32_t value);
 };
 
 class VertSection {
