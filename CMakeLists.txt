@@ -334,7 +334,7 @@ add_executable(colsm_table_printer colsm/tool/table_printer.cc)
 target_link_libraries(colsm_table_printer PRIVATE leveldb)
 target_compile_options(colsm_table_printer PUBLIC ${SBOOST_SIMD_FLAGS})
 
-add_subdirectory(jni)
+#add_subdirectory(jni)
 
 if(LEVELDB_BUILD_TESTS)
   enable_testing()
