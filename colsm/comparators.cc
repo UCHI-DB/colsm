@@ -2,8 +2,7 @@
 // Created by harper on 4/19/21.
 //
 
-#include "comparators.h"
-
+#include "colsm/comparators.h"
 #include "leveldb/slice.h"
 
 using namespace std;

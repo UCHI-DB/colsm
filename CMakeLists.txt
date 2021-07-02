@@ -116,6 +116,7 @@ include(CMakePackageConfigHelpers)
 include(Thirdparty)
 
 set(LEVELDB_PUBLIC_INCLUDE_DIR "include/leveldb")
+set(COLSM_PUBLIC_INCLUDE_DIR "include/colsm")
 set(LEVELDB_PORT_CONFIG_DIR "include/port")
 
 configure_file(
@@ -200,7 +201,6 @@ target_sources(leveldb
     "colsm/vblock/sortmerge_iterator.cc"
     "colsm/vblock/sortmerge_iterator.h"
     "colsm/comparators.cc"
-    "colsm/comparators.h"
     "util/arena.cc"
     "util/arena.h"
     "util/bloom.cc"
@@ -239,6 +239,7 @@ target_sources(leveldb
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/table_builder.h"
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/table.h"
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
+    "${COLSM_PUBLIC_INCLUDE_DIR}/comparators.h"
 )
 
 if (WIN32)
@@ -538,6 +539,11 @@ if(LEVELDB_INSTALL)
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/table.h"
       "${LEVELDB_PUBLIC_INCLUDE_DIR}/write_batch.h"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/leveldb"
+  )
+  install(
+    FILES
+      "${COLSM_PUBLIC_INCLUDE_DIR}/comparators.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/colsm"
   )
 
   include(CMakePackageConfigHelpers)
