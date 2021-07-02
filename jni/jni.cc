@@ -125,4 +125,5 @@ JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_scan(
     }
   }
   delete iterator;
+  return 0;
 }
