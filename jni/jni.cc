@@ -58,9 +58,10 @@ void JNICALL Java_site_ycsb_db_leveldb_LevelDB_init(JNIEnv* env, jobject caller,
   options.filter_policy = leveldb::NewBloomFilterPolicy(10);
 
   leveldb::Status status = leveldb::DB::Open(options, folder_name, &db);
-
-  env->SetLongField(caller, levelDB_db, (int64_t)db);
-  env->SetLongField(caller, levelDB_comparator, (int64_t)intCompare);
+  if (status.ok()) {
+    env->SetLongField(caller, levelDB_db, (int64_t)db);
+    env->SetLongField(caller, levelDB_comparator, (int64_t)intCompare);
+  }
 }
 
 void JNICALL Java_site_ycsb_db_leveldb_LevelDB_close(JNIEnv* env,
