@@ -75,6 +75,9 @@ class LEVELDB_EXPORT Status {
   // Returns the string "OK" for success.
   std::string ToString() const;
 
+  // Expose int code for JNI
+  int intcode() const { return (state_ == nullptr) ? kOk : (int)(state_[4]); }
+
  private:
   enum Code {
     kOk = 0,

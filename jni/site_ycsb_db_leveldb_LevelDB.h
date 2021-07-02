@@ -26,50 +26,34 @@ JNIEXPORT void JNICALL Java_site_ycsb_db_leveldb_LevelDB_close
 /*
  * Class:     site_ycsb_db_leveldb_LevelDB
  * Method:    put
- * Signature: ([B[B)V
+ * Signature: ([B[B)I
  */
-JNIEXPORT void JNICALL Java_site_ycsb_db_leveldb_LevelDB_put
+JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_put
   (JNIEnv *, jobject, jbyteArray, jbyteArray);
 
 /*
  * Class:     site_ycsb_db_leveldb_LevelDB
  * Method:    delete
- * Signature: ([B)V
+ * Signature: ([B)I
  */
-JNIEXPORT void JNICALL Java_site_ycsb_db_leveldb_LevelDB_delete
+JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_delete
   (JNIEnv *, jobject, jbyteArray);
 
 /*
  * Class:     site_ycsb_db_leveldb_LevelDB
  * Method:    get
- * Signature: ([B)[B
+ * Signature: ([B[[B)I
  */
-JNIEXPORT jbyteArray JNICALL Java_site_ycsb_db_leveldb_LevelDB_get
-  (JNIEnv *, jobject, jbyteArray);
+JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_get
+  (JNIEnv *, jobject, jbyteArray, jobjectArray);
 
 /*
  * Class:     site_ycsb_db_leveldb_LevelDB
- * Method:    scanStart
- * Signature: ([B)V
+ * Method:    scan
+ * Signature: ([BI[[B)I
  */
-JNIEXPORT void JNICALL Java_site_ycsb_db_leveldb_LevelDB_scanStart
-  (JNIEnv *, jobject, jbyteArray);
-
-/*
- * Class:     site_ycsb_db_leveldb_LevelDB
- * Method:    scanNext
- * Signature: ()[B
- */
-JNIEXPORT jbyteArray JNICALL Java_site_ycsb_db_leveldb_LevelDB_scanNext
-  (JNIEnv *, jobject);
-
-/*
- * Class:     site_ycsb_db_leveldb_LevelDB
- * Method:    scanStop
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_site_ycsb_db_leveldb_LevelDB_scanStop
-  (JNIEnv *, jobject);
+JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_scan
+  (JNIEnv *, jobject, jbyteArray, jint, jobjectArray);
 
 #ifdef __cplusplus
 }

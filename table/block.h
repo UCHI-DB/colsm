@@ -7,67 +7,68 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include "leveldb/iterator.h"
 
 namespace leveldb {
 
-    struct BlockContents;
+struct BlockContents;
 
-    class Comparator;
+class Comparator;
 
-    class BlockCore {
-    public:
-        virtual size_t size() const = 0;
+class BlockCore {
+ public:
+  virtual ~BlockCore() = default;
 
-        virtual Iterator *NewIterator(const Comparator *comparator) = 0;
-    };
+  virtual size_t size() const = 0;
 
+  virtual Iterator* NewIterator(const Comparator* comparator) = 0;
+};
 
-    class Block {
-    private:
-        std::unique_ptr<BlockCore> core_;
-    public:
-        // Initialize the block with the specified contents.
-        explicit Block(const BlockContents &contents);
+class Block {
+ private:
+  std::unique_ptr<BlockCore> core_;
 
-        Block(const Block &) = delete;
+ public:
+  // Initialize the block with the specified contents.
+  explicit Block(const BlockContents& contents);
 
-        Block &operator=(const Block &) = delete;
+  Block(const Block&) = delete;
 
-        virtual ~Block() {}
+  Block& operator=(const Block&) = delete;
 
-        size_t size() const { return core_->size(); }
+  virtual ~Block() {}
 
-        Iterator *NewIterator(const Comparator *comparator) {
-            return core_->NewIterator(comparator);
-        }
+  size_t size() const { return core_->size(); }
 
-    };
+  Iterator* NewIterator(const Comparator* comparator) {
+    return core_->NewIterator(comparator);
+  }
+};
 
-    class BasicBlockCore : public BlockCore {
-    public:
-        // Initialize the block with the specified contents.
-        explicit BasicBlockCore(const BlockContents &contents);
+class BasicBlockCore : public BlockCore {
+ public:
+  // Initialize the block with the specified contents.
+  explicit BasicBlockCore(const BlockContents& contents);
 
-        ~BasicBlockCore();
+  ~BasicBlockCore();
 
-        size_t size() const override { return size_; }
+  size_t size() const override { return size_; }
 
-        Iterator *NewIterator(const Comparator *comparator) override;
+  Iterator* NewIterator(const Comparator* comparator) override;
 
-    private:
-        class Iter;
+ private:
+  class Iter;
 
-        uint32_t NumRestarts() const;
+  uint32_t NumRestarts() const;
 
-        const char *data_;
-        size_t size_;
-        uint32_t restart_offset_;  // Offset in data_ of restart array
-        bool owned_;               // Block owns data_[]
-    };
+  const char* data_;
+  size_t size_;
+  uint32_t restart_offset_;  // Offset in data_ of restart array
+  bool owned_;               // Block owns data_[]
+};
 
 }  // namespace leveldb
 

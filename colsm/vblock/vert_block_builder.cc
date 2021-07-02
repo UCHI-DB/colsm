@@ -82,8 +82,9 @@ VertBlockBuilder::VertBlockBuilder(const Options* options)
 
 // Assert the keys and values are both int32_t
 void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
+  // Currently we only handle interger keys
+  assert(key.size()==12);
   // Need to handle the internal key
-
   ParsedInternalKey internal_key;
   ParseInternalKey(key, &internal_key);
 
