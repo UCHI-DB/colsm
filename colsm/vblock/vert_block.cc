@@ -41,6 +41,32 @@ int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
   return -1;
 }
 
+int geq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
+               uint32_t target) {
+  uint32_t mask = (1 << bitwidth) - 1;
+  uint32_t begin = 0;
+  uint32_t end = num_entry - 1;
+  while (begin <= end) {
+    auto current = (begin + end + 1) / 2;
+
+    auto bits = current * bitwidth;
+    auto index = bits >> 3;
+    auto offset = bits & 0x7;
+
+    auto extracted = (*(uint32_t*)(data + index) >> offset) & mask;
+
+    if (extracted == target) {
+      return current;
+    }
+    if (extracted > target) {
+      end = current - 1;
+    } else {
+      begin = current + 1;
+    }
+  }
+  return begin;
+}
+
 int section_packed(uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
                    uint32_t target) {
   uint32_t mask = (1 << bitwidth) - 1;
@@ -184,12 +210,20 @@ void VertSection::Read(const uint8_t* in) {
 int32_t VertSection::Find(int32_t target) {
   //  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
   //  return sbp.equal(keys_data_, num_entry_);
+  assert(target >= start_value_);
   return eq_packed(key_data_, num_entry_, bit_width_, target - start_value_);
 }
 
 int32_t VertSection::FindStart(int32_t target) {
-  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
-  return sbp.geq(key_data_, num_entry_);
+  assert(target >= start_value_);
+  //  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
+  //  return sbp.geq(key_data_, num_entry_);
+  auto index =
+      geq_packed(key_data_, num_entry_, bit_width_, target - start_value_);
+  if (index >= num_entry_) {
+    return -1;
+  }
+  return index;
 }
 
 VertBlockCore::VertBlockCore(const BlockContents& data)

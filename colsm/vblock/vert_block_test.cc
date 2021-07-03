@@ -95,14 +95,14 @@ TEST(VertBlockMeta, Search) {
 
   uint32_t plain[100];
   for (auto i = 0; i < 100; ++i) {
-    plain[i] = i*2+10;
+    plain[i] = i * 2 + 10;
   }
   sboost::byteutils::bitpack(plain, 100, 7, (uint8_t*)pointer);
 
   VertBlockMeta meta;
   meta.Read(buffer);
 
-  EXPECT_EQ(-1, meta.Search(9));  // 15 in entries
+  EXPECT_EQ(-1, meta.Search(9));    // 15 in entries
   EXPECT_EQ(17, meta.Search(422));  // 15 in entries
   EXPECT_EQ(17, meta.Search(421));  // 15 in entries
   EXPECT_EQ(18, meta.Search(423));  // 15 in entries
@@ -202,10 +202,12 @@ TEST(VertSection, FindStart) {
 
   VertSection section;
   section.Read(buffer);
-  // diff is 124, location is 62
+  //   diff is 124, location is 62
   EXPECT_EQ(62, section.FindStart(358));
-  // Next is 330, diff is 96, location is 48
+  //   Next is 330, diff is 96, location is 48
   EXPECT_EQ(48, section.FindStart(329));
+  // Larger than end
+  EXPECT_EQ(-1, section.FindStart(900));
 }
 
 TEST(VertBlock, Next) {
@@ -280,7 +282,7 @@ TEST(VertBlock, Seek) {
     ParseInternalKey(key, &pkey);
     EXPECT_EQ(10, *((int32_t*)pkey.user_key.data()));
     EXPECT_EQ(1350, pkey.sequence);
-    EXPECT_EQ(ValueType::kTypeValue,pkey.type);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
     EXPECT_EQ(12, value.size());
     EXPECT_EQ(10, *((int32_t*)value.data()));
     delete ite;
@@ -297,18 +299,27 @@ TEST(VertBlock, Seek) {
     ParseInternalKey(key, &pkey);
     EXPECT_EQ(390, *((int32_t*)pkey.user_key.data()));
     EXPECT_EQ(1350, pkey.sequence);
-    EXPECT_EQ(ValueType::kTypeValue,pkey.type);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
     EXPECT_EQ(12, value.size());
     EXPECT_EQ(390, *((int32_t*)value.data()));
     delete ite;
   }
+  // Test found next key
   {
     auto ite = block.NewIterator(NULL);
     int target_key = 11;
     Slice target((const char*)&target_key, 4);
     ite->Seek(target);
-    EXPECT_TRUE(ite->status().IsNotFound());
-
+    EXPECT_TRUE(ite->status().ok());
+    auto key = ite->key();
+    auto value = ite->value();
+    EXPECT_EQ(12, key.size());
+    ParseInternalKey(key, &pkey);
+    EXPECT_EQ(12, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(1350, pkey.sequence);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
+    EXPECT_EQ(12, value.size());
+    EXPECT_EQ(12, *((int32_t*)value.data()));
     delete ite;
   }
 }
@@ -347,8 +358,8 @@ TEST(VertBlockTest, SeekThenNext) {
       ASSERT_EQ(12, key.size());
       ParseInternalKey(key, &pkey);
       ASSERT_EQ((5 + i) * 2, *((int32_t*)pkey.user_key.data())) << i;
-      ASSERT_EQ(1350,pkey.sequence);
-      ASSERT_EQ(ValueType::kTypeValue,pkey.type);
+      ASSERT_EQ(1350, pkey.sequence);
+      ASSERT_EQ(ValueType::kTypeValue, pkey.type);
       ASSERT_EQ(12, value.size());
       ASSERT_EQ((5 + i) * 2, *((int32_t*)value.data())) << i;
       ite->Next();
