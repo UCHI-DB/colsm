@@ -102,11 +102,11 @@ TEST(VertBlockMeta, Search) {
   VertBlockMeta meta;
   meta.Read(buffer);
 
-  EXPECT_EQ(-1, meta.Search(9));    // 15 in entries
-  EXPECT_EQ(17, meta.Search(422));  // 15 in entries
-  EXPECT_EQ(17, meta.Search(421));  // 15 in entries
-  EXPECT_EQ(18, meta.Search(423));  // 15 in entries
-  EXPECT_EQ(99, meta.Search(841));
+  EXPECT_EQ(0, meta.Search(9));
+  EXPECT_EQ(17, meta.Search(422));
+  EXPECT_EQ(17, meta.Search(421));
+  EXPECT_EQ(18, meta.Search(423));
+  EXPECT_EQ(100, meta.Search(841));
 }
 
 TEST(VertSection, Read) {
@@ -257,7 +257,7 @@ TEST(VertBlock, Seek) {
   char buffer[12];
   Slice key((const char*)buffer, 12);
   for (uint32_t i = 0; i < 1000000; ++i) {
-    *((int32_t*)buffer) = 2 * i;
+    *((int32_t*)buffer) = 2 * i+10;
     EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
     builder.Add(key, key);
   }
@@ -271,8 +271,9 @@ TEST(VertBlock, Seek) {
 
   ParsedInternalKey pkey;
   {
+    // Test exact match on first section
     auto ite = block.NewIterator(NULL);
-    int target_key = 10;
+    int target_key = 30;
     Slice target((const char*)&target_key, 4);
     ite->Seek(target);
     EXPECT_TRUE(ite->status().ok());
@@ -280,14 +281,15 @@ TEST(VertBlock, Seek) {
     auto value = ite->value();
     EXPECT_EQ(12, key.size());
     ParseInternalKey(key, &pkey);
-    EXPECT_EQ(10, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(30, *((int32_t*)pkey.user_key.data()));
     EXPECT_EQ(1350, pkey.sequence);
     EXPECT_EQ(ValueType::kTypeValue, pkey.type);
     EXPECT_EQ(12, value.size());
-    EXPECT_EQ(10, *((int32_t*)value.data()));
+    EXPECT_EQ(30, *((int32_t*)value.data()));
     delete ite;
   }
   {
+    // Test exact match on following section
     auto ite = block.NewIterator(NULL);
     int target_key = 390;
     Slice target((const char*)&target_key, 4);
@@ -304,10 +306,10 @@ TEST(VertBlock, Seek) {
     EXPECT_EQ(390, *((int32_t*)value.data()));
     delete ite;
   }
-  // Test found next key
   {
+    // Test no match, within sections
     auto ite = block.NewIterator(NULL);
-    int target_key = 11;
+    int target_key = 79;
     Slice target((const char*)&target_key, 4);
     ite->Seek(target);
     EXPECT_TRUE(ite->status().ok());
@@ -315,11 +317,84 @@ TEST(VertBlock, Seek) {
     auto value = ite->value();
     EXPECT_EQ(12, key.size());
     ParseInternalKey(key, &pkey);
-    EXPECT_EQ(12, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(80, *((int32_t*)pkey.user_key.data()));
     EXPECT_EQ(1350, pkey.sequence);
     EXPECT_EQ(ValueType::kTypeValue, pkey.type);
     EXPECT_EQ(12, value.size());
-    EXPECT_EQ(12, *((int32_t*)value.data()));
+    EXPECT_EQ(80, *((int32_t*)value.data()));
+    delete ite;
+  }
+  {
+    // Test no match, smaller than all
+    auto ite = block.NewIterator(NULL);
+    int target_key = 5;
+    Slice target((const char*)&target_key, 4);
+    ite->Seek(target);
+    EXPECT_TRUE(ite->status().ok());
+    auto key = ite->key();
+    auto value = ite->value();
+    EXPECT_EQ(12, key.size());
+    ParseInternalKey(key, &pkey);
+    EXPECT_EQ(10, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(1350, pkey.sequence);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
+    EXPECT_EQ(12, value.size());
+    EXPECT_EQ(10, *((int32_t*)value.data()));
+    delete ite;
+  }
+  {
+    // Test no match, larger than all
+    auto ite = block.NewIterator(NULL);
+    int target_key = 5000000;
+    Slice target((const char*)&target_key, 4);
+    ite->Seek(target);
+    EXPECT_TRUE(ite->status().IsNotFound());
+    delete ite;
+  }
+  {
+    // Test no match, between the first two sections
+    auto ite = block.NewIterator(NULL);
+    int target_key = 265;
+    Slice target((const char*)&target_key, 4);
+    ite->Seek(target);
+    EXPECT_TRUE(ite->status().ok());
+    auto key = ite->key();
+    auto value = ite->value();
+    EXPECT_EQ(12, key.size());
+    ParseInternalKey(key, &pkey);
+    EXPECT_EQ(266, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(1350, pkey.sequence);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
+    EXPECT_EQ(12, value.size());
+    EXPECT_EQ(266, *((int32_t*)value.data()));
+    delete ite;
+  }
+  {
+    // Test no match, between the last two sections
+    auto ite = block.NewIterator(NULL);
+    int target_key = 1999881;
+    Slice target((const char*)&target_key, 4);
+    ite->Seek(target);
+    EXPECT_TRUE(ite->status().ok());
+    auto key = ite->key();
+    auto value = ite->value();
+    EXPECT_EQ(12, key.size());
+    ParseInternalKey(key, &pkey);
+    EXPECT_EQ(1999882, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(1350, pkey.sequence);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
+    EXPECT_EQ(12, value.size());
+    EXPECT_EQ(1999882, *((int32_t*)value.data()));
+    delete ite;
+  }
+  {
+    // Test no match, after the last sections
+    auto ite = block.NewIterator(NULL);
+    int target_key = 3999879;
+    Slice target((const char*)&target_key, 4);
+    ite->Seek(target);
+    EXPECT_TRUE(ite->status().IsNotFound());
+
     delete ite;
   }
 }

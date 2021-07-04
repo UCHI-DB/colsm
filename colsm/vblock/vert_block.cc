@@ -41,9 +41,13 @@ int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
   return -1;
 }
 
+// Return the first entry larger or equal to the target
 int geq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
                uint32_t target) {
   uint32_t mask = (1 << bitwidth) - 1;
+  if (target > mask) {
+    return num_entry;
+  }
   uint32_t begin = 0;
   uint32_t end = num_entry - 1;
   while (begin <= end) {
@@ -66,10 +70,13 @@ int geq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
   }
   return begin;
 }
-
-int section_packed(uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
+// Return the last entry with a key smaller or equal to target
+int section_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
                    uint32_t target) {
   uint32_t mask = (1 << bitwidth) - 1;
+  if (target > mask) {
+    return num_entry - 1;
+  }
   uint32_t begin = 0;
   uint32_t end = num_entry - 1;
   while (begin < end) {
@@ -119,7 +126,7 @@ void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
 
 int32_t VertBlockMeta::Search(int32_t value) {
   if (value < start_min_) {
-    return -1;
+    return 0;
   }
   return section_packed(starts_, num_section_, start_bitwidth_,
                         value - start_min_);
@@ -215,7 +222,10 @@ int32_t VertSection::Find(int32_t target) {
 }
 
 int32_t VertSection::FindStart(int32_t target) {
-  assert(target >= start_value_);
+  if (target <= start_value_) {
+    return 0;
+  }
+  // TODO Test the performance of sboost and plain
   //  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
   //  return sbp.geq(key_data_, num_entry_);
   auto index =
@@ -261,6 +271,15 @@ class VertBlockCore::VIter : public Iterator {
     section_.Read(data_pointer_ + meta_.SectionOffset(section_index_));
   }
 
+  void ReadKeyValue() {
+    // Seek to the position, extract the keys and values
+    section_.KeyDecoder()->Skip(entry_index_);
+    section_.SeqDecoder()->Skip(entry_index_);
+    section_.TypeDecoder()->Skip(entry_index_);
+    section_.ValueDecoder()->Skip(entry_index_);
+    ComposeKeyValue();
+  }
+
   void ComposeKeyValue() {
     *((int32_t*)key_buffer_) =
         section_.StartValue() + section_.KeyDecoder()->DecodeU32();
@@ -284,38 +303,36 @@ class VertBlockCore::VIter : public Iterator {
     int32_t target_key = *reinterpret_cast<const int32_t*>(target.data());
 
     auto new_section_index = meta_.Search(target_key);
-    if (new_section_index < 0) {
-      status_ = Status::NotFound(target);
-      return;
-    }
     if (new_section_index != section_index_) {
       ReadSection(new_section_index);
     }
 
     entry_index_ = section_.FindStart(target_key);
     if (entry_index_ == -1) {
-      // Not found
-      status_ = Status::NotFound(target);
-    } else {
-      // Seek to the position, extract the keys and values
-      section_.KeyDecoder()->Skip(entry_index_);
-      section_.SeqDecoder()->Skip(entry_index_);
-      section_.TypeDecoder()->Skip(entry_index_);
-      section_.ValueDecoder()->Skip(entry_index_);
-      ComposeKeyValue();
+      // Not found in current section
+      // If there is next section, move to the beginning of next section
+      // Otherwise not found
+      if (section_index_ < meta_.NumSection() - 1) {
+        ReadSection(section_index_ + 1);
+        entry_index_ = 0;
+      } else {
+        status_ = Status::NotFound(target);
+        return;
+      }
     }
+    ReadKeyValue();
   }
 
   void SeekToFirst() override {
-    // Not supported
-    status_ = Status::NotSupported(Slice("SeekToFirst Not Supported"));
-    assert(false);
+    ReadSection(0);
+    entry_index_ = 0;
+    ReadKeyValue();
   }
 
   void SeekToLast() override {
-    // Not supported
-    status_ = Status::NotSupported(Slice("SeekToLast Not Supported"));
-    assert(false);
+    ReadSection(meta_.NumSection() - 1);
+    entry_index_ = section_.NumEntry() - 1;
+    ReadKeyValue();
   }
 
   void Next() override {
