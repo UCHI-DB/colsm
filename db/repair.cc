@@ -34,6 +34,7 @@
 #include "db/table_cache.h"
 #include "db/version_edit.h"
 #include "db/write_batch_internal.h"
+#include <colsm/vblock/vert_helper.h>
 
 #include "leveldb/comparator.h"
 #include "leveldb/db.h"
@@ -305,9 +306,9 @@ class Repairer {
     if (!s.ok()) {
       return;
     }
-    // This call is only for building level 0 tables
-    TableBuilder* builder = new TableBuilder(
-        options_, colsm::CostModel::INSTANCE->ShouldVertical(0), file);
+    // Read file format from metadata
+    bool vertical = colsm::IsVerticalTable(env_, src);
+    TableBuilder* builder = new TableBuilder(options_, vertical, file);
 
     // Copy data.
     Iterator* iter = NewTableIterator(t.meta);

@@ -198,6 +198,8 @@ target_sources(leveldb
     "colsm/vblock/vert_block.h"
     "colsm/vblock/vert_block_builder.cc"
     "colsm/vblock/vert_block_builder.h"
+    "colsm/vblock/vert_helper.cc"
+    "colsm/vblock/vert_helper.h"
     "colsm/vblock/sortmerge_iterator.cc"
     "colsm/vblock/sortmerge_iterator.h"
     "colsm/comparators.cc"

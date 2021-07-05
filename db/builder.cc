@@ -32,6 +32,9 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
     }
 
     // Only writing level 0 will call this function
+    // The function `BuildTable` is called by WriteLevel0Table and ConvertLogToTable, which
+    // are both level 0 tables
+    // July 5th, 2021
     TableBuilder* builder = new TableBuilder(
         options, colsm::CostModel::INSTANCE->ShouldVertical(0), file);
     meta->smallest.DecodeFrom(iter->key());

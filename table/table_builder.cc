@@ -25,13 +25,14 @@ using namespace colsm;
 namespace leveldb {
 
 struct TableBuilder::Rep {
-  Rep(const Options& opt, bool vformat, WritableFile* f)
+  Rep(const Options& opt, bool vf, WritableFile* f)
       : options(opt),
         index_block_options(opt),
         file(f),
         offset(0),
         index_block(&index_block_options),
         num_entries(0),
+        vformat(vf),
         closed(false),
         filter_block(opt.filter_policy == nullptr
                          ? nullptr
@@ -55,6 +56,7 @@ struct TableBuilder::Rep {
   BlockBuilder index_block;
   std::string last_key;
   int64_t num_entries;
+  bool vformat;
   bool closed;  // Either Finish() or Abandon() has been called.
   FilterBlockBuilder* filter_block;
 
@@ -234,6 +236,8 @@ Status TableBuilder::Finish() {
       std::string handle_encoding;
       filter_block_handle.EncodeTo(&handle_encoding);
       meta_index_block.Add(key, handle_encoding);
+      // Hao : store table format for coLSM in meta
+      meta_index_block.Add("vformat",rep_->vformat?"true":"false");
     }
 
     // TODO(postrelease): Add stats and other meta blocks
