@@ -229,6 +229,8 @@ Status TableBuilder::Finish() {
   // Write metaindex block
   if (ok()) {
     BlockBuilder meta_index_block(&r->options);
+    // Hao : store table format for coLSM in meta
+    meta_index_block.Add("block.colsm.vformat", rep_->vformat ? "true" : "false");
     if (r->filter_block != nullptr) {
       // Add mapping from "filter.Name" to location of filter data
       std::string key = "filter.";
@@ -236,8 +238,6 @@ Status TableBuilder::Finish() {
       std::string handle_encoding;
       filter_block_handle.EncodeTo(&handle_encoding);
       meta_index_block.Add(key, handle_encoding);
-      // Hao : store table format for coLSM in meta
-      meta_index_block.Add("vformat",rep_->vformat?"true":"false");
     }
 
     // TODO(postrelease): Add stats and other meta blocks

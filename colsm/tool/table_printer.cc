@@ -2,6 +2,7 @@
 // Created by Harper on 6/18/21.
 //
 
+#include <iostream>
 #include <leveldb/comparator.h>
 #include <leveldb/env.h>
 #include <leveldb/filter_policy.h>
@@ -119,13 +120,7 @@ unique_ptr<FilterBlockReader> ReadFilter(const Options& options,
       new FilterBlockReader(options.filter_policy, block.data));
 }
 
-unique_ptr<FilterBlockReader> ReadMeta(const Footer& footer, Options& options,
-                                       RandomAccessFile* file) {
-  if (options.filter_policy == nullptr) {
-    return nullptr;  // Do not need any metadata
-  }
-
-  // TODO(sanjay): Skip this if footer.metaindex_handle() size indicates
+void ReadMeta(const Footer& footer, Options& options, RandomAccessFile* file) {
   // it is an empty block.
   ReadOptions opt;
   if (options.paranoid_checks) {
@@ -134,21 +129,19 @@ unique_ptr<FilterBlockReader> ReadMeta(const Footer& footer, Options& options,
   BlockContents contents;
   if (!ReadBlock(file, opt, footer.metaindex_handle(), &contents).ok()) {
     // Do not propagate errors since meta info is not needed for operation
-    return nullptr;
+    return;
   }
   Block* meta = new Block(contents);
 
   Iterator* iter = meta->NewIterator(BytewiseComparator());
-  std::string key = "filter.";
-  key.append(options.filter_policy->Name());
-  iter->Seek(key);
-  unique_ptr<FilterBlockReader> filter = nullptr;
-  if (iter->Valid() && iter->key() == Slice(key)) {
-    filter = ReadFilter(options, file, iter->value());
+  iter->SeekToFirst();
+  for (; iter->Valid(); iter->Next()) {
+    std::cout << iter->key().ToString() << " ==> " << iter->value().ToString()
+              << '\n';
   }
+
   delete iter;
   delete meta;
-  return filter;
 }
 
 int main(int argc, char** argv) {
@@ -173,19 +166,7 @@ int main(int argc, char** argv) {
   Options options;
   options.filter_policy = leveldb::NewBloomFilterPolicy(10);
 
-  // Read the index block
-  BlockContents index_block_contents;
-  ReadOptions opt;
-  s = ReadBlock(file, opt, footer.index_handle(), &index_block_contents);
-
-  if (s.ok()) {
-    // We've successfully read the footer and the index block: we're
-    // ready to serve requests.
-    Block* index_block = new Block(index_block_contents);
-
-    ReadMeta(footer, options, file);
-    // TODO here
-  }
+  ReadMeta(footer, options, file);
 
   delete options.filter_policy;
 

@@ -27,9 +27,9 @@ void write() {
   leveldb::Status s;
 
   for (int i = 0; i < 100000; ++i) {
-    intkey = i;
+    intkey = i * 2;
     std::stringstream ss;
-    ss << "value " << i;
+    ss << "value " << (i * 2);
     if (s.ok()) {
       s = db->Put(leveldb::WriteOptions(), key, leveldb::Slice(ss.str()));
     } else {
@@ -74,4 +74,4 @@ void read() {
   delete options.filter_policy;
 }
 
-int main() { read(); }
+int main() { write(); }

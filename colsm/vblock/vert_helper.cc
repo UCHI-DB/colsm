@@ -45,7 +45,7 @@ bool IsVerticalTable(leveldb::Env* env, const std::string& filename) {
   std::string key = "vformat";
   iter->Seek(key);
   if (iter->Valid() && iter->key() == Slice(key)) {
-    usev = 0 == strncmp(iter->value().data(), "true", 4);
+    usev = (iter->value().ToString() == "true");
   }
   delete iter;
   delete meta;

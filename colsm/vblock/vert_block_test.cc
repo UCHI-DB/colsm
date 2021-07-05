@@ -106,7 +106,7 @@ TEST(VertBlockMeta, Search) {
   EXPECT_EQ(17, meta.Search(422));
   EXPECT_EQ(17, meta.Search(421));
   EXPECT_EQ(18, meta.Search(423));
-  EXPECT_EQ(100, meta.Search(841));
+  EXPECT_EQ(99, meta.Search(841));
 }
 
 TEST(VertSection, Read) {
@@ -210,6 +210,88 @@ TEST(VertSection, FindStart) {
   EXPECT_EQ(-1, section.FindStart(900));
 }
 
+TEST(VertBlock, SeekToFirst) {
+  Options option;
+  VertBlockBuilder builder(&option);
+  builder.value_encoding_ = EncodingType::LENGTH;
+
+  char buffer[12];
+  Slice key((const char*)buffer, 12);
+  for (uint32_t i = 0; i < 1000000; ++i) {
+    *((int32_t*)buffer) = i;
+    EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
+    builder.Add(key, key);
+  }
+  auto result = builder.Finish();
+
+  BlockContents content;
+  content.data = result;
+  content.cachable = false;
+  content.heap_allocated = false;
+  VertBlockCore block(content);
+
+  ParsedInternalKey pkey;
+  {
+    auto ite = block.NewIterator(NULL);
+
+    ite->SeekToFirst();
+    auto key = ite->key();
+    auto value = ite->value();
+    EXPECT_EQ(12, key.size());
+    ParseInternalKey(key, &pkey);
+    EXPECT_EQ(0, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(4, pkey.user_key.size());
+    EXPECT_EQ(1350, pkey.sequence);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
+
+    EXPECT_EQ(12, value.size());
+    EXPECT_EQ(0, *((int32_t*)value.data()));
+
+    delete ite;
+  }
+}
+
+TEST(VertBlock, SeekToLast) {
+  Options option;
+  VertBlockBuilder builder(&option);
+  builder.value_encoding_ = EncodingType::LENGTH;
+
+  char buffer[12];
+  Slice key((const char*)buffer, 12);
+  for (uint32_t i = 0; i < 1000000; ++i) {
+    *((int32_t*)buffer) = i;
+    EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
+    builder.Add(key, key);
+  }
+  auto result = builder.Finish();
+
+  BlockContents content;
+  content.data = result;
+  content.cachable = false;
+  content.heap_allocated = false;
+  VertBlockCore block(content);
+
+  ParsedInternalKey pkey;
+  {
+    auto ite = block.NewIterator(NULL);
+
+    ite->SeekToLast();
+    auto key = ite->key();
+    auto value = ite->value();
+    EXPECT_EQ(12, key.size());
+    ParseInternalKey(key, &pkey);
+    EXPECT_EQ(999999, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(4, pkey.user_key.size());
+    EXPECT_EQ(1350, pkey.sequence);
+    EXPECT_EQ(ValueType::kTypeValue, pkey.type);
+
+    EXPECT_EQ(12, value.size());
+    EXPECT_EQ(999999, *((int32_t*)value.data()));
+
+    delete ite;
+  }
+}
+
 TEST(VertBlock, Next) {
   Options option;
   VertBlockBuilder builder(&option);
@@ -257,7 +339,7 @@ TEST(VertBlock, Seek) {
   char buffer[12];
   Slice key((const char*)buffer, 12);
   for (uint32_t i = 0; i < 1000000; ++i) {
-    *((int32_t*)buffer) = 2 * i+10;
+    *((int32_t*)buffer) = 2 * i + 10;
     EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
     builder.Add(key, key);
   }
