@@ -122,6 +122,8 @@ JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_scan(
                               (const jbyte*)value.data());
       env->SetObjectArrayElement(jvalues, i, jvalue);
       iterator->Next();
+    } else {
+      break;
     }
   }
   delete iterator;

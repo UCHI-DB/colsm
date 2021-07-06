@@ -74,4 +74,49 @@ void read() {
   delete options.filter_policy;
 }
 
-int main() { write(); }
+void insert(leveldb::DB* db, int key, std::string value) {
+  auto skey = leveldb::Slice((const char*)&key, 4);
+  leveldb::Status s = db->Put(leveldb::WriteOptions(), skey, value);
+  if (!s.ok()) {
+    std::cerr << "Error Insert " << key << " => " << value << '\n';
+  }
+}
+
+void scan(leveldb::DB* db, int keystart, int limit) {
+  auto key = leveldb::Slice((const char*)&keystart, 4);
+  auto iterator = db->NewIterator(leveldb::ReadOptions());
+  iterator->Seek(key);
+  for (auto i = 0; i < limit; ++i) {
+    if (iterator->Valid()) {
+      std::cout << iterator->value().ToString() << '\n';
+      iterator->Next();
+    } else {
+      break;
+    }
+  }
+  delete iterator;
+}
+
+void runexample() {
+  auto intCompare = colsm::intComparator();
+  leveldb::DB* db;
+
+  leveldb::Options options;
+  options.comparator = intCompare.get();
+  options.create_if_missing = true;
+  options.filter_policy = leveldb::NewBloomFilterPolicy(10);
+
+  leveldb::Status status = leveldb::DB::Open(options, "/tmp/testdb", &db);
+
+  insert(db, 5, "a=10");
+  insert(db, 10, "b=20");
+  insert(db, 15, "c=30");
+  scan(db, 5, 4);
+
+  delete db;
+  delete options.filter_policy;
+}
+
+int main() {
+  runexample();
+}
