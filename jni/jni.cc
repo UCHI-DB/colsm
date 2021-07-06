@@ -2,7 +2,7 @@
 #include <leveldb/filter_policy.h>
 
 #include "colsm/comparators.h"
-#include "site_ycsb_db_leveldb_LevelDB.h"
+#include "site_ycsb_db_colsm_CoLSM.h"
 
 std::string fromByteArray(JNIEnv* env, jbyteArray input) {
   jint length = env->GetArrayLength(input);
@@ -13,6 +13,25 @@ std::string fromByteArray(JNIEnv* env, jbyteArray input) {
 }
 
 inline jint translate(leveldb::Status status) { return status.intcode(); }
+
+inline jint translate2(leveldb::Status status) {
+  if (status.ok()) {
+    return 0;
+  }
+  if (status.IsNotFound()) {
+    return 1;
+  }
+  if (status.IsCorruption()) {
+    return 2;
+  }
+  if (status.IsNotSupportedError()) {
+    return 3;
+  }
+  if (status.IsInvalidArgument()) {
+    return 4;
+  }
+  return 5;
+}
 
 static jclass levelDB_Class;
 static jfieldID levelDB_db;
@@ -25,7 +44,7 @@ jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     return JNI_ERR;
   }
 
-  jclass tempLocalClassRef = env->FindClass("site/ycsb/db/leveldb/LevelDB");
+  jclass tempLocalClassRef = env->FindClass("site/ycsb/db/colsm/CoLSM");
   levelDB_Class = (jclass)env->NewGlobalRef(tempLocalClassRef);
   env->DeleteLocalRef(tempLocalClassRef);
 
@@ -45,8 +64,8 @@ void JNICALL JNI_OnUnload(JavaVM* vm, void* reserved) {
   env->DeleteGlobalRef(levelDB_Class);
 }
 
-void JNICALL Java_site_ycsb_db_leveldb_LevelDB_init(JNIEnv* env, jobject caller,
-                                                    jbyteArray folder) {
+void JNICALL Java_site_ycsb_db_colsm_CoLSM_init(JNIEnv* env, jobject caller,
+                                                jbyteArray folder) {
   std::string folder_name = fromByteArray(env, folder);
 
   auto intCompare = colsm::intComparator().release();
@@ -64,8 +83,7 @@ void JNICALL Java_site_ycsb_db_leveldb_LevelDB_init(JNIEnv* env, jobject caller,
   }
 }
 
-void JNICALL Java_site_ycsb_db_leveldb_LevelDB_close(JNIEnv* env,
-                                                     jobject caller) {
+void JNICALL Java_site_ycsb_db_colsm_CoLSM_close(JNIEnv* env, jobject caller) {
   leveldb::DB* db = (leveldb::DB*)env->GetLongField(caller, levelDB_db);
   leveldb::Comparator* comparator =
       (leveldb::Comparator*)env->GetLongField(caller, levelDB_comparator);
@@ -73,9 +91,9 @@ void JNICALL Java_site_ycsb_db_leveldb_LevelDB_close(JNIEnv* env,
   delete comparator;
 }
 
-jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_put(JNIEnv* env, jobject caller,
-                                                   jbyteArray jkey,
-                                                   jbyteArray jvalue) {
+jint JNICALL Java_site_ycsb_db_colsm_CoLSM_put(JNIEnv* env, jobject caller,
+                                               jbyteArray jkey,
+                                               jbyteArray jvalue) {
   leveldb::DB* db = (leveldb::DB*)env->GetLongField(caller, levelDB_db);
   auto key = fromByteArray(env, jkey);
   auto value = fromByteArray(env, jvalue);
@@ -84,16 +102,19 @@ jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_put(JNIEnv* env, jobject caller,
   return translate(status);
 }
 
-JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_delete(
-    JNIEnv* env, jobject caller, jbyteArray jkey) {
+JNIEXPORT jint JNICALL Java_site_ycsb_db_colsm_CoLSM_delete(JNIEnv* env,
+                                                            jobject caller,
+                                                            jbyteArray jkey) {
   leveldb::DB* db = (leveldb::DB*)env->GetLongField(caller, levelDB_db);
   auto key = fromByteArray(env, jkey);
   auto status = db->Delete(leveldb::WriteOptions(), leveldb::Slice(key));
   return translate(status);
 }
 
-JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_get(
-    JNIEnv* env, jobject caller, jbyteArray jkey, jobjectArray jvalue) {
+JNIEXPORT jint JNICALL Java_site_ycsb_db_colsm_CoLSM_get(JNIEnv* env,
+                                                         jobject caller,
+                                                         jbyteArray jkey,
+                                                         jobjectArray jvalue) {
   leveldb::DB* db = (leveldb::DB*)env->GetLongField(caller, levelDB_db);
   auto key = fromByteArray(env, jkey);
   std::string value;
@@ -107,9 +128,9 @@ JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_get(
   return translate(status);
 }
 
-JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_scan(
-    JNIEnv* env, jobject caller, jbyteArray jkey, jint limit,
-    jobjectArray jvalues) {
+JNIEXPORT jint JNICALL
+Java_site_ycsb_db_colsm_CoLSM_scan(JNIEnv* env, jobject caller, jbyteArray jkey,
+                                   jint limit, jobjectArray jvalues) {
   leveldb::DB* db = (leveldb::DB*)env->GetLongField(caller, levelDB_db);
   auto key = fromByteArray(env, jkey);
   auto iterator = db->NewIterator(leveldb::ReadOptions());

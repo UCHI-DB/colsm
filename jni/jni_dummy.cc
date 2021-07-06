@@ -2,7 +2,7 @@
  *  This is a dummy implementation of LevelDB JNI for easy test of JNI functionality
  */
 #include <map>
-#include "site_ycsb_db_leveldb_LevelDB.h"
+#include "site_ycsb_db_colsm_CoLSM.h"
 
 std::string fromByteArray(JNIEnv *env, jbyteArray input) {
     jint length = env->GetArrayLength(input);
@@ -25,7 +25,7 @@ jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     }
 
-    jclass tempLocalClassRef = env->FindClass("site/ycsb/db/leveldb/LevelDB");
+    jclass tempLocalClassRef = env->FindClass("site/ycsb/db/colsm/CoLSM");
     levelDB_Class = (jclass) env->NewGlobalRef(tempLocalClassRef);
     env->DeleteLocalRef(tempLocalClassRef);
 
@@ -45,20 +45,20 @@ void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
     env->DeleteGlobalRef(levelDB_Class);
 }
 
-void JNICALL Java_site_ycsb_db_leveldb_LevelDB_init(JNIEnv *env, jobject caller,
+void JNICALL Java_site_ycsb_db_colsm_CoLSM_init(JNIEnv *env, jobject caller,
                                                     jbyteArray folder) {
     std::string folder_name = fromByteArray(env, folder);
     std::map<int32_t, std::string> *storage = new std::map<int32_t, std::string>();
     env->SetLongField(caller, levelDB_db, (int64_t) storage);
 }
 
-void JNICALL Java_site_ycsb_db_leveldb_LevelDB_close(JNIEnv *env,
+void JNICALL Java_site_ycsb_db_colsm_CoLSM_close(JNIEnv *env,
                                                      jobject caller) {
     std::map<int32_t, std::string> *storage = (std::map<int32_t, std::string> *) env->GetLongField(caller, levelDB_db);
     delete storage;
 }
 
-jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_put(JNIEnv *env, jobject caller,
+jint JNICALL Java_site_ycsb_db_colsm_CoLSM_put(JNIEnv *env, jobject caller,
                                                    jbyteArray jkey,
                                                    jbyteArray jvalue) {
     std::map<int32_t, std::string> *storage = (std::map<int32_t, std::string> *) env->GetLongField(caller, levelDB_db);
@@ -69,7 +69,7 @@ jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_put(JNIEnv *env, jobject caller,
     return 0;
 }
 
-JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_delete(
+JNIEXPORT jint JNICALL Java_site_ycsb_db_colsm_CoLSM_delete(
         JNIEnv *env, jobject caller, jbyteArray jkey) {
     std::map<int32_t, std::string> *storage = (std::map<int32_t, std::string> *) env->GetLongField(caller, levelDB_db);
     auto key = fromByteArray(env, jkey);
@@ -78,7 +78,7 @@ JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_delete(
     return 0;
 }
 
-JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_get(
+JNIEXPORT jint JNICALL Java_site_ycsb_db_colsm_CoLSM_get(
         JNIEnv *env, jobject caller, jbyteArray jkey, jobjectArray jvalue) {
     std::map<int32_t, std::string> *storage = (std::map<int32_t, std::string> *) env->GetLongField(caller, levelDB_db);
     auto key = fromByteArray(env, jkey);
@@ -94,7 +94,7 @@ JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_get(
     return 0;
 }
 
-JNIEXPORT jint JNICALL Java_site_ycsb_db_leveldb_LevelDB_scan(
+JNIEXPORT jint JNICALL Java_site_ycsb_db_colsm_CoLSM_scan(
         JNIEnv *env, jobject caller, jbyteArray jkey, jint limit,
         jobjectArray jvalues) {
     std::map<int32_t, std::string> *storage = (std::map<int32_t, std::string> *) env->GetLongField(caller, levelDB_db);
