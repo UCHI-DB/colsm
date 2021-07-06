@@ -14,25 +14,6 @@ std::string fromByteArray(JNIEnv* env, jbyteArray input) {
 
 inline jint translate(leveldb::Status status) { return status.intcode(); }
 
-inline jint translate2(leveldb::Status status) {
-  if (status.ok()) {
-    return 0;
-  }
-  if (status.IsNotFound()) {
-    return 1;
-  }
-  if (status.IsCorruption()) {
-    return 2;
-  }
-  if (status.IsNotSupportedError()) {
-    return 3;
-  }
-  if (status.IsInvalidArgument()) {
-    return 4;
-  }
-  return 5;
-}
-
 static jclass levelDB_Class;
 static jfieldID levelDB_db;
 static jfieldID levelDB_comparator;
