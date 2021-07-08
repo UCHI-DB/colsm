@@ -13,11 +13,11 @@
 //               MAGIC
 //    metadata:  num_section    : uint32_t
 //               section_offsets: uint64_t{num_section}
-//               start_min      : int32_t
+//               start_min      : uint32_t
 //               start_bitwidth : uint8_t
 //               starts         : bit-packed uint32_t
 //    section:   num_entry      : uint32_t
-//               start_value    : int32_t
+//               start_value    : uint32_t
 //               key_offset     : uint32_t
 //               key_encoding   : uint8_t
 //               seq_offset     : uint32_t
@@ -54,7 +54,7 @@ namespace colsm {
 class VertSectionBuilder {
  private:
   uint32_t num_entry_;
-  int32_t start_value_;
+  uint32_t start_value_;
   EncodingType value_enc_type_;
 
   std::unique_ptr<Encoder> key_encoder_;
@@ -63,11 +63,11 @@ class VertSectionBuilder {
   std::unique_ptr<Encoder> value_encoder_;
 
  public:
-  VertSectionBuilder(EncodingType enc_type, int32_t);
+  VertSectionBuilder(EncodingType enc_type, uint32_t);
 
-  int32_t StartValue() const { return start_value_; }
+  uint32_t StartValue() const { return start_value_; }
 
-  void StartValue(int32_t sv) { start_value_ = sv; }
+  void StartValue(uint32_t sv) { start_value_ = sv; }
 
   void Add(ParsedInternalKey key, const Slice& value);
 

@@ -3,6 +3,7 @@
 //
 
 #include "colsm/comparators.h"
+
 #include "leveldb/slice.h"
 
 using namespace std;
@@ -14,12 +15,12 @@ class IntComparator : public Comparator {
   const char* Name() const override { return "IntComparator"; }
 
   int Compare(const Slice& a, const Slice& b) const override {
-    if (b.size() < a.size()) {
-      return 1;
-    }
-    int aint = *((int32_t*)a.data());
-    int bint = *((int32_t*)b.data());
-    return aint - bint;
+    auto auint = *((uint32_t*)a.data());
+    auto buint = *((uint32_t*)b.data());
+    auto msb = ((auint & 0x80000000) ^ (buint & 0x80000000)) >> 31;
+
+    return (int)(((msb - 1) & (auint & 0x7FFFFFFF) - (buint & 0x7FFFFFFF)) |
+                 ((-msb) & buint));
   }
 
   void FindShortestSeparator(std::string* start,

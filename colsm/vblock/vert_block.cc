@@ -115,7 +115,7 @@ uint32_t VertBlockMeta::SectionOffset(uint32_t sec_index) {
   return offsets_[sec_index];
 }
 
-void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
+void VertBlockMeta::AddSection(uint64_t offset, uint32_t start_value) {
   num_section_++;
   if (starts_plain_.empty()) {
     start_min_ = start_value;
@@ -124,7 +124,7 @@ void VertBlockMeta::AddSection(uint64_t offset, int32_t start_value) {
   offsets_.push_back(offset);
 }
 
-int32_t VertBlockMeta::Search(int32_t value) {
+int32_t VertBlockMeta::Search(uint32_t value) {
   if (value < start_min_) {
     return 0;
   }
@@ -139,7 +139,7 @@ uint32_t VertBlockMeta::Read(const uint8_t* in) {
   offsets_.resize(num_section_);
   memcpy(offsets_.data(), pointer, num_section_ * 8);
   pointer += num_section_ * 8;
-  start_min_ = *reinterpret_cast<const int32_t*>(pointer);
+  start_min_ = *reinterpret_cast<const uint32_t*>(pointer);
   pointer += 4;
   start_bitwidth_ = *(pointer++);
 
@@ -162,7 +162,7 @@ void VertBlockMeta::Write(uint8_t* out) {
   pointer += 4;
   memcpy(pointer, offsets_.data(), 8 * num_section_);
   pointer += 8 * num_section_;
-  *reinterpret_cast<int32_t*>(pointer) = start_min_;
+  *reinterpret_cast<uint32_t*>(pointer) = start_min_;
   pointer += 4;
 
   *reinterpret_cast<uint8_t*>(pointer++) = start_bitwidth_;
@@ -178,7 +178,7 @@ void VertSection::Read(const uint8_t* in) {
   auto pointer = in;
   num_entry_ = *reinterpret_cast<const uint32_t*>(pointer);
   pointer += 4;
-  start_value_ = *reinterpret_cast<const int32_t*>(pointer);
+  start_value_ = *reinterpret_cast<const uint32_t*>(pointer);
   pointer += 4;
 
   auto key_size = *((uint32_t*)pointer);
@@ -214,14 +214,14 @@ void VertSection::Read(const uint8_t* in) {
   value_decoder_->Attach(pointer);
 }
 
-int32_t VertSection::Find(int32_t target) {
+int32_t VertSection::Find(uint32_t target) {
   //  sboost::SortedBitpack sbp(bit_width_, target - start_value_);
   //  return sbp.equal(keys_data_, num_entry_);
   assert(target >= start_value_);
   return eq_packed(key_data_, num_entry_, bit_width_, target - start_value_);
 }
 
-int32_t VertSection::FindStart(int32_t target) {
+int32_t VertSection::FindStart(uint32_t target) {
   if (target <= start_value_) {
     return 0;
   }
@@ -281,7 +281,7 @@ class VertBlockCore::VIter : public Iterator {
   }
 
   void ComposeKeyValue() {
-    *((int32_t*)key_buffer_) =
+    *((uint32_t*)key_buffer_) =
         section_.StartValue() + section_.KeyDecoder()->DecodeU32();
     auto seq = section_.SeqDecoder()->DecodeU64();
     auto type = section_.TypeDecoder()->DecodeU8();

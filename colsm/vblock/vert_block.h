@@ -28,7 +28,7 @@ class VertBlockMeta {
   uint32_t num_section_;
   // Section offsets
   std::vector<uint64_t> offsets_;
-  int32_t start_min_;
+  uint32_t start_min_;
   uint8_t start_bitwidth_;
   uint8_t* starts_;
 
@@ -68,7 +68,7 @@ class VertBlockMeta {
    * @param offset offset in byte of the section
    * @param start_value start_value of the section
    */
-  void AddSection(uint64_t offset, int32_t start_value);
+  void AddSection(uint64_t offset, uint32_t start_value);
 
   void Finish();
 
@@ -78,14 +78,14 @@ class VertBlockMeta {
    * @return index of the section,
    * -1 if not in range
    */
-  int32_t Search(int32_t value);
+  int32_t Search(uint32_t value);
 };
 
 class VertSection {
  private:
   // Basic Info
   uint32_t num_entry_;
-  int32_t start_value_;
+  uint32_t start_value_;
 
   // For fast lookup on key_data
   const uint8_t* key_data_;
@@ -105,7 +105,7 @@ class VertSection {
 
   uint8_t BitWidth() const { return bit_width_; }
 
-  int32_t StartValue() const { return start_value_; }
+  uint32_t StartValue() const { return start_value_; }
 
   const uint8_t* KeysData() { return key_data_; }
 
@@ -126,14 +126,14 @@ class VertSection {
    * @param target
    * @return
    */
-  int32_t Find(int32_t target);
+  int32_t Find(uint32_t target);
 
   /**
    * Find the first entry that is geq target
    * @param target
-   * @return
+   * @return -1 if not found
    */
-  int32_t FindStart(int32_t target);
+  int32_t FindStart(uint32_t target);
 };
 
 class VertBlockCore : public BlockCore {

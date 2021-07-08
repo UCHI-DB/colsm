@@ -11,7 +11,7 @@
 namespace colsm {
 
 VertSectionBuilder::VertSectionBuilder(EncodingType enc_type,
-                                       int32_t start_value)
+                                       uint32_t start_value)
     : num_entry_(0), value_enc_type_(enc_type), start_value_(start_value) {
   key_encoder_ = u32::EncodingFactory::Get(BITPACK).encoder();
   seq_encoder_ = u64::EncodingFactory::Get(PLAIN).encoder();
@@ -24,8 +24,7 @@ VertSectionBuilder::VertSectionBuilder(EncodingType enc_type,
 void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
   num_entry_++;
 
-  key_encoder_->Encode(
-      (uint32_t)(*(int32_t*)(key.user_key.data()) - start_value_));
+  key_encoder_->Encode((*(uint32_t*)(key.user_key.data()) - start_value_));
   seq_encoder_->Encode(key.sequence);
   type_encoder_->Encode((uint8_t)key.type);
   value_encoder_->Encode(value);
@@ -47,7 +46,7 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   uint8_t* pointer = (uint8_t*)out;
   *reinterpret_cast<uint32_t*>(pointer) = num_entry_;
   pointer += 4;
-  *reinterpret_cast<int32_t*>(pointer) = start_value_;
+  *reinterpret_cast<uint32_t*>(pointer) = start_value_;
   pointer += 4;
 
   auto key_size = key_encoder_->EstimateSize();
@@ -82,16 +81,14 @@ VertBlockBuilder::VertBlockBuilder(const Options* options)
 
 // Assert the keys and values are both int32_t
 void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
-  // Currently we only handle interger keys
-  assert(key.size()==12);
   // Need to handle the internal key
   ParsedInternalKey internal_key;
   ParseInternalKey(key, &internal_key);
 
   // write other parts of the internal key
   if (current_section_ == nullptr) {
-    int32_t intkey =
-        *reinterpret_cast<const int32_t*>(internal_key.user_key.data());
+    uint32_t intkey =
+        *reinterpret_cast<const uint32_t*>(internal_key.user_key.data());
     current_section_ = std::unique_ptr<VertSectionBuilder>(
         new VertSectionBuilder(value_encoding_, intkey));
   }

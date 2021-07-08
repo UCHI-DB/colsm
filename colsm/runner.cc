@@ -2,14 +2,17 @@
 // Created by Harper on 5/14/21.
 //
 #include <cassert>
+#include <fstream>
 #include <iostream>
 #include <leveldb/db.h>
 #include <leveldb/filter_policy.h>
+#include <regex>
 #include <sstream>
+#include <stdlib.h>
 
 #include "colsm/comparators.h"
 
-void write() {
+void preparetest() {
   auto intCompare = colsm::intComparator();
   leveldb::DB* db;
 
@@ -42,7 +45,7 @@ void write() {
   delete options.filter_policy;
 }
 
-void read() {
+void loadtest() {
   auto intCompare = colsm::intComparator();
   leveldb::DB* db;
 
@@ -74,12 +77,25 @@ void read() {
   delete options.filter_policy;
 }
 
-void insert(leveldb::DB* db, int key, std::string value) {
+void insert(leveldb::DB* db, int key, std::string& value) {
   auto skey = leveldb::Slice((const char*)&key, 4);
   leveldb::Status s = db->Put(leveldb::WriteOptions(), skey, value);
   if (!s.ok()) {
     std::cerr << "Error Insert " << key << " => " << value << '\n';
   }
+}
+
+bool read(leveldb::DB* db, int key) {
+  auto bkey = leveldb::Slice((const char*)&key, 4);
+  std::string value;
+  auto s = db->Get(leveldb::ReadOptions(), bkey, &value);
+  if (s.ok()) {
+    std::cout << "Read:" << key << " => " << value << '\n';
+    return true;
+  }
+
+  std::cout << "Read:" << key << " not found\n";
+  return false;
 }
 
 void scan(leveldb::DB* db, int keystart, int limit) {
@@ -97,7 +113,17 @@ void scan(leveldb::DB* db, int keystart, int limit) {
   delete iterator;
 }
 
-void runexample() {
+void scanall(leveldb::DB* db) {
+  auto iterator = db->NewIterator(leveldb::ReadOptions());
+  iterator->SeekToFirst();
+  for (iterator->SeekToFirst(); iterator->Valid(); iterator->Next()) {
+    auto key = *((uint32_t*)iterator->key().data());
+    std::cout << key << " ==> " << iterator->value().ToString() << '\n';
+  }
+  delete iterator;
+}
+
+int main() {
   auto intCompare = colsm::intComparator();
   leveldb::DB* db;
 
@@ -106,17 +132,26 @@ void runexample() {
   options.create_if_missing = true;
   options.filter_policy = leveldb::NewBloomFilterPolicy(10);
 
-  leveldb::Status status = leveldb::DB::Open(options, "/tmp/testdb", &db);
+  leveldb::Status status = leveldb::DB::Open(options, "/tmp/colsmtestdb", &db);
 
-  insert(db, 5, "a=10");
-  insert(db, 10, "b=20");
-  insert(db, 15, "c=30");
-  scan(db, 5, 4);
+  std::ifstream insertFile("/home/cc/insert.log");
+
+  int targetkey = 1805947546;
+
+//  std::string line;
+//  while (std::getline(insertFile, line)) {
+//    std::regex regexp("-?\\d+$");
+//    std::smatch m;
+//
+//    // regex_search that searches pattern regexp in the string mystr
+//    regex_search(line, m, regexp);
+//    std::string value = m[0];
+//    char* pend;
+//    int insertkey = strtol((const char*)value.data(), &pend, 10);
+//    insert(db, insertkey, value);
+//  }
+  auto s = read(db, targetkey);
 
   delete db;
   delete options.filter_policy;
-}
-
-int main() {
-  runexample();
 }
