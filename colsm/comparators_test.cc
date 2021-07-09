@@ -47,6 +47,14 @@ TEST(Comparators, IntComparator) {
   a = 0xF7423424;
   b = 0xF7423424;
   ASSERT_TRUE(comparator->Compare(akey, bkey) == 0);
+
+  a = 0xFFFF2343;
+  b = 0xF7F3;
+  ASSERT_TRUE(comparator->Compare(akey, bkey) > 0);
+
+  b = 0xFFFF2343;
+  a = 0xF7F3;
+  ASSERT_TRUE(comparator->Compare(akey, bkey) < 0);
 }
 
 // LevelDB test did not use gtest_main

@@ -18,7 +18,6 @@ class IntComparator : public Comparator {
     auto auint = *((uint32_t*)a.data());
     auto buint = *((uint32_t*)b.data());
     auto msb = ((auint & 0x80000000) ^ (buint & 0x80000000)) >> 31;
-
     return (int)(((msb - 1) & (auint & 0x7FFFFFFF) - (buint & 0x7FFFFFFF)) |
                  ((-msb) & buint));
   }

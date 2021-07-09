@@ -27,7 +27,7 @@ TEST(VertBlockMeta, Read) {
     *(uint64_t*)pointer = i;
     pointer += 8;
   }
-  *(int32_t*)pointer = 377;
+  *(uint32_t*)pointer = 377;
   pointer += 4;
 
   *(int8_t*)pointer = 7;
@@ -77,36 +77,71 @@ TEST(VertBlockMeta, Write) {
 
 TEST(VertBlockMeta, Search) {
   uint8_t buffer[897];
-  memset(buffer, 0, 897);
 
-  // Fill in the buffer
-  auto pointer = buffer;
-  *(uint32_t*)pointer = 100;
-  pointer += 4;
-  for (int i = 0; i < 100; ++i) {
-    *(uint64_t*)pointer = i * 50;
-    pointer += 8;
+  {
+    memset(buffer, 0, 897);
+    // Fill in the buffer
+    auto pointer = buffer;
+    *(uint32_t*)pointer = 100;
+    pointer += 4;
+    for (int i = 0; i < 100; ++i) {
+      *(uint64_t*)pointer = i * 50;
+      pointer += 8;
+    }
+    *(uint32_t*)pointer = 377;
+    pointer += 4;
+
+    *(int8_t*)pointer = 7;
+    pointer += 1;
+
+    uint32_t plain[100];
+    for (auto i = 0; i < 100; ++i) {
+      plain[i] = i * 2 + 10;
+    }
+    sboost::byteutils::bitpack(plain, 100, 7, (uint8_t*)pointer);
+
+    VertBlockMeta meta;
+    meta.Read(buffer);
+
+    EXPECT_EQ(0, meta.Search(9));
+    EXPECT_EQ(17, meta.Search(422));
+    EXPECT_EQ(17, meta.Search(421));
+    EXPECT_EQ(18, meta.Search(423));
+    EXPECT_EQ(99, meta.Search(841));
   }
-  *(int32_t*)pointer = 377;
-  pointer += 4;
+  // Test large uint numbers
+  {
+    memset(buffer, 0, 897);
+    // Fill in the buffer
+    auto pointer = buffer;
+    *(uint32_t*)pointer = 100;
+    pointer += 4;
+    for (int i = 0; i < 100; ++i) {
+      *(uint64_t*)pointer = i * 50;
+      pointer += 8;
+    }
+    *(uint32_t*)pointer = 0xF0180179;
+    pointer += 4;
 
-  *(int8_t*)pointer = 7;
-  pointer += 1;
+    *(int8_t*)pointer = 7;
+    pointer += 1;
 
-  uint32_t plain[100];
-  for (auto i = 0; i < 100; ++i) {
-    plain[i] = i * 2 + 10;
+    uint32_t plain[100];
+    for (auto i = 0; i < 100; ++i) {
+      plain[i] = i * 2 + 10;
+    }
+    sboost::byteutils::bitpack(plain, 100, 7, (uint8_t*)pointer);
+
+    VertBlockMeta meta;
+    meta.Read(buffer);
+
+    EXPECT_EQ(0, meta.Search(9));
+    EXPECT_EQ(0, meta.Search(0xF0180009));
+    EXPECT_EQ(17, meta.Search(0xF01801A6));
+    EXPECT_EQ(17, meta.Search(0xF01801A5));
+    EXPECT_EQ(18, meta.Search(0xF01801A7));
+    EXPECT_EQ(99, meta.Search(0xF0180349));
   }
-  sboost::byteutils::bitpack(plain, 100, 7, (uint8_t*)pointer);
-
-  VertBlockMeta meta;
-  meta.Read(buffer);
-
-  EXPECT_EQ(0, meta.Search(9));
-  EXPECT_EQ(17, meta.Search(422));
-  EXPECT_EQ(17, meta.Search(421));
-  EXPECT_EQ(18, meta.Search(423));
-  EXPECT_EQ(99, meta.Search(841));
 }
 
 TEST(VertSection, Read) {
@@ -116,7 +151,7 @@ TEST(VertSection, Read) {
 
   *(uint32_t*)pointer = 100;
   pointer += 4;
-  *(int32_t*)pointer = 234;
+  *(uint32_t*)pointer = 0xFF051234;
   pointer += 4;
 
   *(uint32_t*)pointer = 201;
@@ -143,7 +178,7 @@ TEST(VertSection, Read) {
 
   VertSection section;
   section.Read(buffer);
-  EXPECT_EQ(234, section.StartValue());
+  EXPECT_EQ(0xFF051234, section.StartValue());
   EXPECT_EQ(8, section.BitWidth());
   EXPECT_EQ((const uint8_t*)pointer, section.KeysData());
 }
@@ -155,7 +190,7 @@ TEST(VertSection, Find) {
 
   *(uint32_t*)pointer = 100;
   pointer += 4;
-  *(int32_t*)pointer = 234;
+  *(uint32_t*)pointer = 0xFF0500EA;
   pointer += 4;
 
   *(pointer + 4) = BITPACK;
@@ -173,9 +208,9 @@ TEST(VertSection, Find) {
   VertSection section;
   section.Read(buffer);
   // diff is 124, location is 62
-  EXPECT_EQ(62, section.Find(358));
-
-  EXPECT_EQ(-1, section.Find(329));
+  EXPECT_EQ(62, section.Find(0xFF050166));
+  EXPECT_EQ(-1, section.Find(0xFF050149));
+  EXPECT_EQ(-1, section.Find(0xFF0501F4));
 }
 
 TEST(VertSection, FindStart) {
@@ -185,7 +220,7 @@ TEST(VertSection, FindStart) {
 
   *(uint32_t*)pointer = 100;
   pointer += 4;
-  *(int32_t*)pointer = 234;
+  *(uint32_t*)pointer = 0xFF0500EA;
   pointer += 4;
 
   *(pointer + 4) = BITPACK;
@@ -202,12 +237,13 @@ TEST(VertSection, FindStart) {
 
   VertSection section;
   section.Read(buffer);
+  EXPECT_EQ(0, section.FindStart(0xFF0500B1));
   //   diff is 124, location is 62
-  EXPECT_EQ(62, section.FindStart(358));
+  EXPECT_EQ(62, section.FindStart(0xFF050166));
   //   Next is 330, diff is 96, location is 48
-  EXPECT_EQ(48, section.FindStart(329));
+  EXPECT_EQ(48, section.FindStart(0xFF050149));
   // Larger than end
-  EXPECT_EQ(-1, section.FindStart(900));
+  EXPECT_EQ(-1, section.FindStart(0xFF050900));
 }
 
 TEST(VertBlock, SeekToFirst) {
@@ -218,7 +254,7 @@ TEST(VertBlock, SeekToFirst) {
   char buffer[12];
   Slice key((const char*)buffer, 12);
   for (uint32_t i = 0; i < 1000000; ++i) {
-    *((int32_t*)buffer) = i;
+    *((uint32_t*)buffer) = 0xFF000000+i;
     EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
     builder.Add(key, key);
   }
@@ -239,13 +275,13 @@ TEST(VertBlock, SeekToFirst) {
     auto value = ite->value();
     EXPECT_EQ(12, key.size());
     ParseInternalKey(key, &pkey);
-    EXPECT_EQ(0, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(0xFF000000, *((uint32_t*)pkey.user_key.data()));
     EXPECT_EQ(4, pkey.user_key.size());
     EXPECT_EQ(1350, pkey.sequence);
     EXPECT_EQ(ValueType::kTypeValue, pkey.type);
 
     EXPECT_EQ(12, value.size());
-    EXPECT_EQ(0, *((int32_t*)value.data()));
+    EXPECT_EQ(0xFF000000, *((uint32_t*)value.data()));
 
     delete ite;
   }
@@ -259,7 +295,7 @@ TEST(VertBlock, SeekToLast) {
   char buffer[12];
   Slice key((const char*)buffer, 12);
   for (uint32_t i = 0; i < 1000000; ++i) {
-    *((int32_t*)buffer) = i;
+    *((int32_t*)buffer) = 0xF0000000+i;
     EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
     builder.Add(key, key);
   }
@@ -280,13 +316,13 @@ TEST(VertBlock, SeekToLast) {
     auto value = ite->value();
     EXPECT_EQ(12, key.size());
     ParseInternalKey(key, &pkey);
-    EXPECT_EQ(999999, *((int32_t*)pkey.user_key.data()));
+    EXPECT_EQ(0xF00F423F, *((uint32_t*)pkey.user_key.data()));
     EXPECT_EQ(4, pkey.user_key.size());
     EXPECT_EQ(1350, pkey.sequence);
     EXPECT_EQ(ValueType::kTypeValue, pkey.type);
 
     EXPECT_EQ(12, value.size());
-    EXPECT_EQ(999999, *((int32_t*)value.data()));
+    EXPECT_EQ(0xF00F423F, *((uint32_t*)value.data()));
 
     delete ite;
   }
@@ -314,8 +350,8 @@ TEST(VertBlock, Next) {
 
   ParsedInternalKey pkey;
   auto ite = block.NewIterator(NULL);
+  ite->SeekToFirst();
   for (int i = 0; i < 1000000; ++i) {
-    ite->Next();
     auto key = ite->key();
     auto value = ite->value();
     EXPECT_EQ(12, key.size()) << i;
@@ -327,6 +363,7 @@ TEST(VertBlock, Next) {
 
     EXPECT_EQ(12, value.size()) << i;
     EXPECT_EQ(i, *((int32_t*)value.data())) << i;
+    ite->Next();
   }
   delete ite;
 }
