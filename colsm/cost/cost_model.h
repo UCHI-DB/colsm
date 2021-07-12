@@ -5,16 +5,17 @@
 #ifndef COLSM_COST_MODEL_H
 #define COLSM_COST_MODEL_H
 #include <memory>
+#include <vector>
 
 namespace colsm {
 
-struct CostModelEnv {
+struct CostModel {
   int l; // Total number of levels
   int m; // Number of levels start using leveling
   int b; // Number of entries in a storage block;
 
-  int t; // Compaction ratio
-  double fpr; // False positive rate
+  int* t; // Compaction ratio
+  double* fpr; // False positive rate
 
   double pv; // Block Point lookup for Vertical
   double ph; // Block Point lookup for Horizontal
@@ -24,21 +25,26 @@ struct CostModelEnv {
 
   double rv; // Range Lookup for Vertical
   double rh; // Range Lookup for Horizontal
+
+  bool* level_results;
 };
 
-class CostModel {
+class CostOracle {
  protected:
-  CostModel();
+  CostOracle();
+
+  std::vector<bool> level_vertical_;
+
+  bool ReadModel();
 
  public:
-  virtual ~CostModel() = default;
 
-  static std::unique_ptr<CostModel> INSTANCE;
+  virtual ~CostOracle() = default;
 
-  void optimize()
+  static std::unique_ptr<CostOracle> INSTANCE;
 
   bool ShouldVertical(int level);
 };
 
 }  // namespace colsm
-#endif  // LEVELDB_COST_MODEL_H
+#endif  // COLSM_COST_MODEL_H

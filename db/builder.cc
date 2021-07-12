@@ -36,7 +36,7 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
     // are both level 0 tables
     // July 5th, 2021
     TableBuilder* builder = new TableBuilder(
-        options, colsm::CostModel::INSTANCE->ShouldVertical(0), file);
+            options, colsm::CostOracle::INSTANCE->ShouldVertical(0), file);
     meta->smallest.DecodeFrom(iter->key());
     Slice key;
     for (; iter->Valid(); iter->Next()) {
