@@ -31,6 +31,7 @@ bool CostOracle::ReadModel() {
       modelFile >> level_assign;
       level_vertical_.push_back(level_assign);
     }
+    modelFile.close();
     return true;
   }
   return false;
