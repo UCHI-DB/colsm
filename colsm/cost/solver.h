@@ -11,8 +11,10 @@
 
 namespace colsm {
 class CPlexSolver {
+protected:
+    void SolveLevelDB(CostModel&);
  public:
-  void Solve(CostModel& model);
+  void Solve(CostModel& );
 };
 
 }  // namespace colsm
