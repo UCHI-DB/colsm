@@ -1,8 +1,16 @@
 # CMake files to build the solver which involves linking a ILOG CPlex library
 
 # CPlex settings
+set(CONCERT_ROOT "${CMAKE_SOURCE_DIR}/thirdparty/concert")
 set(CPLEX_ROOT "${CMAKE_SOURCE_DIR}/thirdparty/cplex")
+include_directories(${CONCERT_ROOT}/include)
 include_directories(${CPLEX_ROOT}/include)
+
+add_library(Concert::Concert STATIC IMPORTED)
+set_target_properties(Concert::Concert PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES ${CONCERT_ROOT}/include
+        IMPORTED_LOCATION ${CONCERT_ROOT}/lib/x86-64_linux/static_pic/libconcert.a
+        )
 
 add_library(CPLEX::CPLEX STATIC IMPORTED)
 set_target_properties(CPLEX::CPLEX PROPERTIES
@@ -26,4 +34,4 @@ target_sources(colsm_run_solver
             run_solver.cc
             solver.cc
         )
-target_link_libraries(colsm_run_solver PRIVATE CPLEX::CPLEX)# CPlex::cplexdistmip CPlex::ilocplex)
+target_link_libraries(colsm_run_solver PRIVATE Concert::Concert CPLEX::CPLEX CPLEX::CPLEXdistmip CPLEX::ILOCPLEX)
