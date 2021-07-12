@@ -10,21 +10,21 @@
 namespace colsm {
 
 struct CostModel {
-  int l; // Total number of levels
-  int m; // Number of levels start using leveling
-  int b; // Number of entries in a storage block;
+  int l;  // Total number of levels
+  int m;  // Number of levels start using leveling
+  int b;  // Number of entries in a storage block;
 
-  int* t; // Compaction ratio
-  double* fpr; // False positive rate
+  int* t;       // Compaction ratio
+  double* fpr;  // False positive rate
 
-  double pv; // Block Point lookup for Vertical
-  double ph; // Block Point lookup for Horizontal
+  double pv;  // Block Point lookup for Vertical
+  double ph;  // Block Point lookup for Horizontal
 
-  double uv; // Update for Vertical
-  double uh; // Update for Horizontal
+  double uv;  // Update for Vertical
+  double uh;  // Update for Horizontal
 
-  double rv; // Range Lookup for Vertical
-  double rh; // Range Lookup for Horizontal
+  double rv;  // Range Lookup for Vertical
+  double rh;  // Range Lookup for Horizontal
 
   bool* level_results;
 };
@@ -38,7 +38,6 @@ class CostOracle {
   bool ReadModel();
 
  public:
-
   virtual ~CostOracle() = default;
 
   static std::unique_ptr<CostOracle> INSTANCE;

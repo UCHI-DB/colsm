@@ -6,7 +6,5 @@
 
 namespace colsm {
 
-    void CPlexSolver::Solve(CostModel &model) {
-
-    }
-}
+void CPlexSolver::Solve(CostModel& model) {}
+}  // namespace colsm

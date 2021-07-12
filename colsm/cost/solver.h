@@ -6,14 +6,14 @@
 #define COLSM_COST_SOLVER_H
 
 #include <vector>
+
 #include "cost_model.h"
 
 namespace colsm {
-    class CPlexSolver {
+class CPlexSolver {
+ public:
+  void Solve(CostModel& model);
+};
 
-    public:
-        void Solve(CostModel& model);
-    };
-
-}
-#endif //COLSM_COS*T_SOLVER_H
+}  // namespace colsm
+#endif  // COLSM_COST_SOLVER_H
