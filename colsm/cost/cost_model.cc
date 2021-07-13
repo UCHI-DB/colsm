@@ -12,7 +12,7 @@ using namespace std;
 
 static int LEVEL_DEFAULT = 7;
 
-CostOracle::CostOracle() {
+CostModel::CostModel() {
   if (!ReadModel()) {
     for (auto i = 0; i <= LEVEL_DEFAULT; ++i) {
       level_vertical_.push_back(false);
@@ -20,7 +20,7 @@ CostOracle::CostOracle() {
   }
 }
 
-bool CostOracle::ReadModel() {
+bool CostModel::ReadModel() {
   level_vertical_.clear();
   ifstream modelFile("colsm_model");
   if (modelFile.good()) {
@@ -37,9 +37,9 @@ bool CostOracle::ReadModel() {
   return false;
 }
 
-std::unique_ptr<CostOracle> CostOracle::INSTANCE =
-    std::unique_ptr<CostOracle>(new CostOracle());
+std::unique_ptr<CostModel> CostModel::INSTANCE =
+    std::unique_ptr<CostModel>(new CostModel());
 
-bool CostOracle::ShouldVertical(int level) { return level_vertical_[level]; }
+bool CostModel::ShouldVertical(int level) { return level_vertical_[level]; }
 
 }  // namespace colsm

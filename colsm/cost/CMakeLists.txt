@@ -17,11 +17,6 @@ set_target_properties(CPLEX::CPLEX PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${CPLEX_ROOT}/include
         IMPORTED_LOCATION ${CPLEX_ROOT}/lib/x86-64_linux/libcplex.a
         )
-add_library(CPLEX::CPLEXdistmip STATIC IMPORTED)
-set_target_properties(CPLEX::CPLEXdistmip PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES ${CPLEX_ROOT}/include
-        IMPORTED_LOCATION ${CPLEX_ROOT}/lib/x86-64_linux/libcplexdistmip.a
-        )
 add_library(CPLEX::ILOCPLEX STATIC IMPORTED)
 set_target_properties(CPLEX::ILOCPLEX PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${CPLEX_ROOT}/include
@@ -34,4 +29,7 @@ target_sources(colsm_run_solver
             run_solver.cc
             solver.cc
         )
-target_link_libraries(colsm_run_solver PRIVATE Concert::Concert CPLEX::CPLEX CPLEX::CPLEXdistmip CPLEX::ILOCPLEX)
+
+# Pay attention to the library sequence, ILO must be before CPLEX or there will be errors. Don't know why yet
+target_link_libraries(colsm_run_solver PRIVATE Concert::Concert CPLEX::ILOCPLEX CPLEX::CPLEX Threads::Threads m dl)
+target_compile_options(colsm_run_solver PRIVATE -fexceptions -fPIC -fno-strict-aliasing)

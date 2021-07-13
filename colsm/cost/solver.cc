@@ -10,24 +10,43 @@ namespace colsm {
 
 using namespace std;
 
-void CPlexSolver::Solve(CostModel& cost_model) {
-    SolveLevelDB(cost_model);
+void CPlexSolver::Solve(Parameter& parameter, Workload& workload) {
+  SolveLevelDB(parameter, workload);
 }
 
-void CPlexSolver::SolveLevelDB(CostModel &cost_model) {
+void CPlexSolver::SolveLevelDB(Parameter& param, Workload& workload) {
   IloEnv env;
   IloModel model(env);
 
   IloNumVarArray var(env);
 
   // Define variables
-  for(auto i = 0 ; i < cost_model.l;++i) {
-      var.add(IloNumVar(0,1,ILOINT));
+  for (auto i = 0; i < param.l; ++i) {
+    var.add(IloNumVar(0, 1, ILOINT));
   }
 
-  // U = \sum D/B
   // P = \sum T p P
-  // R = P +
+  // R = P + R
+  // U = \sum D/B
+  // result = alpha P + beta R + gamma U
+  auto p = param.t[0] * param.fpr[0] *
+           (var[0] * param.pv + (1 - var[0]) * param.ph) * param.b[0];
+  auto r = (var[0] * param.pv + (1 - var[0]) * param.ph) * param.b[0] +
+           (var[0] * param.rv + (1 - var[0]) * param.rh);
+  auto u = (var[0] * param.uv + (1 - var[0]) * param.uh) / param.b[0];
+
+  for (int i = 1; i < param.l; ++i) {
+    p = p + param.t[i] * param.fpr[i] *
+                (var[i] * param.pv + (1 - var[i]) * param.ph) * param.b[i];
+    r = r + (var[i] * param.pv + (1 - var[i]) * param.ph) * param.b[i] +
+        (var[i] * param.rv + (1 - var[i]) * param.rh);
+    u = u + (var[i] * param.uv + (1 - var[i]) * param.uh) / param.b[i];
+  }
+
+  auto result = workload.alpha * p + workload.beta * r + workload.gamma * u;
+
+  model.add(IloMinimize(env, result));
+
   IloCplex cplex(model);
 
   cplex.solve();
@@ -38,14 +57,16 @@ void CPlexSolver::SolveLevelDB(CostModel &cost_model) {
   IloNumArray vals(env);
   cplex.getValues(vals, var);
   env.out() << "Values        = " << vals << endl;
-  cplex.getSlacks(vals, con);
-  env.out() << "Slacks        = " << vals << endl;
 
-//  cplex.exportModel("mipex1.lp");
+  auto intArray = vals.toIntArray();
+  param.level_results.clear();
+  for (int i = 0; i < param.l; ++i) {
+    param.level_results.push_back(intArray[i] != 0);
+  }
 
   env.end();
-  return;
 
+  return;
 }
 
 }  // namespace colsm

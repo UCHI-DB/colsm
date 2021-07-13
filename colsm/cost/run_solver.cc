@@ -10,16 +10,17 @@ using namespace colsm;
 int main() {
   CPlexSolver solver;
   // Get input parameters
-  CostModel model;
+  Parameter parameter;
+  Workload workload;
 
 
-  solver.Solve(model);
+  solver.Solve(parameter, workload);
 
   // Write model to output file
   ofstream model_file("colsm_model");
-  model_file << model.l << '\n';
-  for (auto i = 0; i < model.l; ++i) {
-    model_file << model.level_results[i] << '\n';
+  model_file << parameter.l << '\n';
+  for (auto i = 0; i < parameter.l; ++i) {
+    model_file << parameter.level_results[i] << '\n';
   }
   model_file.close();
 }

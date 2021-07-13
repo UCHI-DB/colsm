@@ -815,7 +815,7 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
   if (s.ok()) {
     auto level = compact->compaction->level();
     compact->builder = new TableBuilder(
-            options_, colsm::CostOracle::INSTANCE->ShouldVertical(level), compact->outfile);
+            options_, colsm::CostModel::INSTANCE->ShouldVertical(level), compact->outfile);
   }
   return s;
 }
