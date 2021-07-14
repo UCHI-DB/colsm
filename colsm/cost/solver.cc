@@ -22,7 +22,7 @@ void CPlexSolver::SolveLevelDB(Parameter& param, Workload& workload) {
 
   // Define variables
   for (auto i = 0; i < param.l; ++i) {
-    var.add(IloNumVar(0, 1, ILOINT));
+    var.add(IloNumVar(env, 0, 1, ILOINT));
   }
 
   // P = \sum T p P
