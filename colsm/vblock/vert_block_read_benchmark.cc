@@ -101,8 +101,10 @@ public:
             }
 
             auto result = builder.Finish();
-
-            BlockContents content{result, true, true};
+            char *copied = (char *) malloc(result.size());
+            memcpy(copied, result.data(), result.size());
+            Slice heap(copied, result.size());
+            BlockContents content{heap, true, true};
             vblock_ = new VertBlockCore(content);
         }
     }
@@ -115,9 +117,9 @@ public:
 };
 
 BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State &state) {
+auto ite = block_->NewIterator(leveldb::BytewiseComparator());
     for (auto _ : state) {
         //    for (int i = 0; i < 10; ++i) {
-        auto ite = block_->NewIterator(leveldb::BytewiseComparator());
 
         char at[12];
         for(int i = 0 ; i < 10000;++i) {
@@ -126,25 +128,24 @@ BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State &state) {
         ite->Seek(target);
         benchmark::DoNotOptimize(ite->key());
         //    std::cout << *((int32_t*)key_.data()) << std::endl;
-        delete ite;
+
 
             }
-}
+}delete ite;
 }
 
 BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State &state) {
 
+auto ite = vblock_->NewIterator(NULL);
     for (auto _ : state) {
-        auto ite = vblock_->NewIterator(NULL);
 
 char at[12];
 for(int i = 0 ; i < 10000;++i) {
 *((uint32_t*)at)=i;
 Slice target(at, 12);
 ite->Seek(target);
-        ite->Seek(target);
         benchmark::DoNotOptimize(ite->key());
     }
-    delete ite;
-}
+
+}delete ite;
 }
