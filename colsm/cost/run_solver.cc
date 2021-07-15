@@ -25,10 +25,10 @@ int main() {
   }
   param.m = 8;
   param.pv = 1;
-  param.ph = 3;
+  param.ph = 2;
   param.rv = 10;
   param.rh = 10;
-  param.uv = 5;
+  param.uv = 5000000;
   param.uh = 5;
 
   workload.alpha = 0.5;

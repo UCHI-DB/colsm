@@ -77,7 +77,7 @@ void VertSectionBuilder::Dump(uint8_t* out) {
 }
 
 VertBlockBuilder::VertBlockBuilder(const Options* options)
-    : BlockBuilder(options), section_limit_(128), offset_(0) {}
+    : BlockBuilder(options), section_limit_(256), offset_(0) {}
 
 // Assert the keys and values are both int32_t
 void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
