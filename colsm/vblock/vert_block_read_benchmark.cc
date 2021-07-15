@@ -31,14 +31,19 @@ protected:
 
     unique_ptr<Comparator> comparator_;
 
-    Slice key_;
-    char vbuffer_[16384];
-    int value_len_ = 16384;
+    char kbuffer_[12];
+    char vbuffer_[16];
+    int value_len_ = 16;
 
+    vector<uint32_t> target;
 public:
     // add members as needed
 
     BlockReadBenchmark() {
+        srand(time(nullptr));
+        for(int i = 0 ; i < 10000;++i) {
+            target.push_back(rand()%10000);
+        }
         comparator_ = intComparator();
         num_entry_ = 1000000;
         {
@@ -48,15 +53,14 @@ public:
             }
             std::sort(buffer.begin(), buffer.end(), binary_sorter);
 
-            uint32_t intkey;
 
             Options option;
             option.comparator = leveldb::BytewiseComparator();
             BlockBuilder builder((const Options *) &option);
 
             for (auto i = 0; i < num_entry_; ++i) {
-                intkey = buffer[i];
-                Slice key((const char *) &intkey, 4);
+                *((uint32_t*)kbuffer_)= buffer[i];
+                Slice key(kbuffer_, 12);
                 Slice value(vbuffer_, value_len_);
                 builder.Add(key, value);
             }
@@ -67,36 +71,31 @@ public:
             BlockContents content{heap, true, true};
             block_ = new Block(content);
         }
+//        {
+//            Options option;
+//            option.comparator = comparator_.get();
+//            BlockBuilder builder((const Options *) &option);
+//
+//            for (uint32_t i = 0; i < num_entry_; ++i) {
+//                *((uint32_t*)kbuffer_)= i;
+//                Slice key(kbuffer_, 12);
+//                Slice value(vbuffer_, value_len_);
+//                builder.Add(key, value);
+//            }
+//            auto result = builder.Finish();
+//            char *copied = (char *) malloc(result.size());
+//            memcpy(copied, result.data(), result.size());
+//            Slice heap(copied, result.size());
+//            BlockContents content{heap, true, true};
+//            blockWithInt_ = new Block(content);
+//        }
         {
-            uint32_t intkey;
-
-            Options option;
-            option.comparator = comparator_.get();
-            BlockBuilder builder((const Options *) &option);
+            Options options;
+            VertBlockBuilder builder(&options);
 
             for (uint32_t i = 0; i < num_entry_; ++i) {
-                intkey = i;
-                Slice key((const char *) &intkey, 4);
-                Slice value(vbuffer_, value_len_);
-                builder.Add(key, value);
-            }
-            auto result = builder.Finish();
-            char *copied = (char *) malloc(result.size());
-            memcpy(copied, result.data(), result.size());
-            Slice heap(copied, result.size());
-            BlockContents content{heap, true, true};
-            blockWithInt_ = new Block(content);
-        }
-        {
-            VertBlockBuilder vbb();
-
-            uint32_t intkey;
-            Slice key((const char *) &intkey, 4);
-
-            VertBlockBuilder builder(NULL);
-
-            for (uint32_t i = 0; i < num_entry_; ++i) {
-                intkey = i;
+                *((uint32_t*)kbuffer_)= i;
+                Slice key(kbuffer_, 12);
                 Slice value(vbuffer_, value_len_);
                 builder.Add(key, value);
             }
@@ -120,24 +119,32 @@ BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State &state) {
         //    for (int i = 0; i < 10; ++i) {
         auto ite = block_->NewIterator(leveldb::BytewiseComparator());
 
-        int a = 29942;
-        Slice target((const char *) &a, 4);
+        char at[12];
+        for(int i = 0 ; i < 10000;++i) {
+        *((uint32_t*)at)=i;
+        Slice target(at, 12);
         ite->Seek(target);
-        key_ = ite->key();
+        benchmark::DoNotOptimize(ite->key());
         //    std::cout << *((int32_t*)key_.data()) << std::endl;
         delete ite;
-        //    }
-    }
+
+            }
+}
 }
 
 BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State &state) {
-    auto ite = vblock_->NewIterator(NULL);
 
     for (auto _ : state) {
-        int a = 39703;
-        Slice target((const char *) &a, 4);
+        auto ite = vblock_->NewIterator(NULL);
+
+char at[12];
+for(int i = 0 ; i < 10000;++i) {
+*((uint32_t*)at)=i;
+Slice target(at, 12);
+ite->Seek(target);
         ite->Seek(target);
-        key_ = ite->key();
+        benchmark::DoNotOptimize(ite->key());
     }
     delete ite;
+}
 }
