@@ -32,7 +32,7 @@ protected:
     unique_ptr<Comparator> comparator_;
 
     char kbuffer_[12];
-    char vbuffer_[16];
+    char vbuffer_[16] = "i am the value";
     int value_len_ = 16;
 
     vector<uint32_t> target;
@@ -117,35 +117,35 @@ public:
 };
 
 BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State &state) {
-auto ite = block_->NewIterator(leveldb::BytewiseComparator());
+
     for (auto _ : state) {
         //    for (int i = 0; i < 10; ++i) {
-
+        auto ite = block_->NewIterator(leveldb::BytewiseComparator());
         char at[12];
         for(int i = 0 ; i < 10000;++i) {
-        *((uint32_t*)at)=i;
-        Slice target(at, 12);
-        ite->Seek(target);
+        *((uint32_t*)at)=target[i];
+        Slice t(at, 12);
+        ite->Seek(t);
         benchmark::DoNotOptimize(ite->key());
         //    std::cout << *((int32_t*)key_.data()) << std::endl;
 
-
+delete ite;
             }
-}delete ite;
+}
 }
 
 BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State &state) {
 
-auto ite = vblock_->NewIterator(NULL);
     for (auto _ : state) {
 
 char at[12];
 for(int i = 0 ; i < 10000;++i) {
-*((uint32_t*)at)=i;
-Slice target(at, 12);
-ite->Seek(target);
-        benchmark::DoNotOptimize(ite->key());
+auto ite = vblock_->NewIterator(NULL);
+*((uint32_t*)at)=target[i];
+Slice t(at, 12);
+ite->Seek(t);
+        benchmark::DoNotOptimize(ite->key());delete ite;
     }
 
-}delete ite;
+}
 }
