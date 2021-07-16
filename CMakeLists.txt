@@ -421,6 +421,7 @@ if(LEVELDB_BUILD_TESTS)
     leveldb_test("colsm/vblock/vert_block_builder_test.cc")
     leveldb_test("colsm/vblock/vert_coder_test.cc")
     leveldb_test("colsm/comparators_test.cc")
+    leveldb_test("colsm/respool/respool_test.cc")
 
     leveldb_test("util/arena_test.cc")
     leveldb_test("util/bloom_test.cc")
