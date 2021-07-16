@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "util/coding.h"
+#include "../respool/respool.h"
 
 using namespace leveldb;
 namespace colsm {
@@ -86,15 +87,21 @@ inline int64_t zigzagDecoding(uint64_t value) {
   return (value >> 1) ^ -(value & 1);
 }
 
+// Use a resource pool of encoder/decoder
 template <class E, class D>
 class EncodingTemplate : public Encoding {
+private:
+    ResPool<E> epool_;
+    ResPool<D> dpool_;
  public:
+    EncodingTemplate():epool_(10),dpool_(10) {}
+
   std::unique_ptr<Encoder> encoder() override {
-    return std::unique_ptr<Encoder>(new E());
+    return epool_.Get();
   }
 
   std::unique_ptr<Decoder> decoder() override {
-    return std::unique_ptr<Decoder>(new D());
+    return dpool_.Get();
   }
 };
 

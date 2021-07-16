@@ -31,8 +31,8 @@ class BlockReadBenchmark : public benchmark::Fixture {
   unique_ptr<Comparator> comparator_;
 
   char kbuffer_[12];
-  char vbuffer_[16] = "i am the value";
-  int value_len_ = 16;
+  char vbuffer_[128] = "i am the value";
+  int value_len_ = 128;
 
   vector<uint32_t> target;
 
@@ -42,7 +42,7 @@ class BlockReadBenchmark : public benchmark::Fixture {
   BlockReadBenchmark() {
     srand(time(nullptr));
     for (int i = 0; i < 10000; ++i) {
-      target.push_back(rand() % 10000);
+      target.push_back(rand() % 1000000);
     }
     comparator_ = intComparator();
     num_entry_ = 1000000;
@@ -134,13 +134,13 @@ BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State& state) {
 BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State& state) {
   for (auto _ : state) {
     char at[12];
-    for (int i = 0; i < 10000; ++i) {
-      auto ite = vblock_->NewIterator(NULL);
-      *((uint32_t*)at) = target[i];
-      Slice t(at, 12);
-      ite->Seek(t);
-      benchmark::DoNotOptimize(ite->key());
-      delete ite;
-    }
+      for (int i = 0; i < 10000; ++i) {
+          auto ite = vblock_->NewIterator(NULL);
+          *((uint32_t *) at) = target[i];
+          Slice t(at, 12);
+          ite->Seek(t);
+          benchmark::DoNotOptimize(ite->key());
+          delete ite;
+      }
   }
 }
