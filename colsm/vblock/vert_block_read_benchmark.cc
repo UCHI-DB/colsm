@@ -31,8 +31,9 @@ class BlockReadBenchmark : public benchmark::Fixture {
   unique_ptr<Comparator> comparator_;
 
   char kbuffer_[12];
-  char vbuffer_[128] = "i am the value";
-  int value_len_ = 128;
+
+  char vbuffer_[32] = "i am the value";
+  int value_len_ = 32;
 
   vector<uint32_t> target;
 

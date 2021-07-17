@@ -22,11 +22,10 @@ using namespace colsm;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-bool int_sorter(int a, int b) { return a - b; }
-
 BlockContents prepareBlock(std::vector<int>& keys, int value_len) {
   uint32_t num_entry = keys.size();
   uint32_t intkey;
+  char key_buffer[12];
   char value_buffer[value_len];
   Slice key((const char*)&intkey, 4);
   Slice value(value_buffer, value_len);
@@ -40,7 +39,7 @@ BlockContents prepareBlock(std::vector<int>& keys, int value_len) {
     builder.Add(key, value);
   }
   auto result = builder.Finish();
-  char* copied = (char*)malloc(result.size());
+  char* copied = new char[result.size()];
   memcpy(copied, result.data(), result.size());
   Slice heap(copied, result.size());
   return BlockContents{heap, true, false};
@@ -64,7 +63,7 @@ BlockContents prepareVBlock(std::vector<int>& keys, int value_len,
     builder.Add(key, value);
   }
   auto result = builder.Finish();
-  char* copied = (char*)malloc(result.size());
+  char* copied = new char[result.size()];
   memcpy(copied, result.data(), result.size());
   Slice heap(copied, result.size());
   return BlockContents{heap, true, false};
@@ -133,6 +132,8 @@ void VBlockMergeWithNoOverlap(benchmark::State& state) {
 
     auto ite1 = block1.NewIterator(comparator.get());
     auto ite2 = block2.NewIterator(comparator.get());
+    ite1->SeekToFirst();
+    ite2->SeekToFirst();
     auto ite = colsm::sortMergeIterator(comparator.get(), ite1, ite2);
     while (ite->Valid()) {
       builder.Add(ite->key(), ite->value());
@@ -146,4 +147,4 @@ void VBlockMergeWithNoOverlap(benchmark::State& state) {
 }
 
 BENCHMARK(BlockMergeWithNoOverlap);
-BENCHMARK(VBlockMergeWithNoOverlap);
+//BENCHMARK(VBlockMergeWithNoOverlap);

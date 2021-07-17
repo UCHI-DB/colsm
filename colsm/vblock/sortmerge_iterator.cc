@@ -31,8 +31,15 @@ class TwoMergeIterator : public Iterator {
     left_ = unique_ptr<Iterator>(left);
     right_ = unique_ptr<Iterator>(right);
 
-    pointer_ = right;
-    left_->Next();
+    auto compare = comparator_->Compare(left_->key(),right_->key());
+    if(compare < 0) {
+      pointer_ = left_.get();
+    } else if(compare > 0) {
+      pointer_ = right_.get();
+    } else {
+      pointer_ = left_.get();
+      right_->Next();
+    }
   }
 
   void Seek(const Slice& target) override {
