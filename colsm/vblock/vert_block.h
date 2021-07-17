@@ -91,10 +91,10 @@ class VertSection {
   const uint8_t* key_data_;
   uint8_t bit_width_;
 
-  std::unique_ptr<Decoder> key_decoder_;
-  std::unique_ptr<Decoder> seq_decoder_;
-  std::unique_ptr<Decoder> type_decoder_;
-  std::unique_ptr<Decoder> value_decoder_;
+  std::shared_ptr<Decoder> key_decoder_;
+  std::shared_ptr<Decoder> seq_decoder_;
+  std::shared_ptr<Decoder> type_decoder_;
+  std::shared_ptr<Decoder> value_decoder_;
 
  public:
   VertSection();

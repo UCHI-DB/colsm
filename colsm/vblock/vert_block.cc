@@ -240,8 +240,10 @@ VertBlockCore::VertBlockCore(const BlockContents& data)
     : raw_data_((uint8_t*)data.data.data()),
       size_(data.data.size()),
       owned_(data.heap_allocated) {
-  meta_.Read(raw_data_);
-  content_data_ = raw_data_ + meta_.EstimateSize();
+
+  auto meta_size = *((uint32_t*)(raw_data_ + size_-8));
+  meta_.Read(raw_data_+size_-8-meta_size);
+  content_data_ = raw_data_;
 }
 
 VertBlockCore::~VertBlockCore() {

@@ -248,8 +248,7 @@ TEST(VertSection, FindStart) {
 
 TEST(VertBlock, SeekToFirst) {
   Options option;
-  VertBlockBuilder builder(&option);
-  builder.value_encoding_ = EncodingType::LENGTH;
+  VertBlockBuilder builder(&option,LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);
@@ -289,8 +288,7 @@ TEST(VertBlock, SeekToFirst) {
 
 TEST(VertBlock, SeekToLast) {
   Options option;
-  VertBlockBuilder builder(&option);
-  builder.value_encoding_ = EncodingType::LENGTH;
+  VertBlockBuilder builder(&option,LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);
@@ -330,8 +328,7 @@ TEST(VertBlock, SeekToLast) {
 
 TEST(VertBlock, Next) {
   Options option;
-  VertBlockBuilder builder(&option);
-  builder.value_encoding_ = EncodingType::LENGTH;
+  VertBlockBuilder builder(&option,LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);
@@ -370,8 +367,7 @@ TEST(VertBlock, Next) {
 
 TEST(VertBlock, Seek) {
   Options option;
-  VertBlockBuilder builder(&option);
-  builder.value_encoding_ = EncodingType::LENGTH;
+  VertBlockBuilder builder(&option,LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);
@@ -520,8 +516,7 @@ TEST(VertBlock, Seek) {
 
 TEST(VertBlockTest, SeekThenNext) {
   Options option;
-  VertBlockBuilder builder(&option);
-  builder.value_encoding_ = EncodingType::LENGTH;
+  VertBlockBuilder builder(&option,LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);

@@ -12,7 +12,8 @@
 using namespace colsm;
 
 TEST(VertSectionBuilder, Write) {
-  VertSectionBuilder section(EncodingType::LENGTH, 3);
+  VertSectionBuilder section(EncodingType::LENGTH);
+  section.Open(3);
   int ik;
   Slice key((char*)&ik, 4);
   char v[4];
@@ -51,7 +52,8 @@ TEST(VertSectionBuilder, Write) {
 }
 
 TEST(VertSectionBuilder, EstimateSize) {
-  VertSectionBuilder section(EncodingType::PLAIN, 0);
+  VertSectionBuilder section(EncodingType::PLAIN);
+  section.Open(0);
 
   int ik;
   Slice key((char*)&ik, 4);
@@ -85,8 +87,7 @@ class VertBlockMetaForTest : public VertBlockMeta {
 
 TEST(VertBlockBuilder, Build) {
   Options option;
-  VertBlockBuilder builder(&option);
-  builder.value_encoding_ = EncodingType::LENGTH;
+  VertBlockBuilder builder(&option,LENGTH);
 
   char buffer[12];
   Slice key(buffer, 12);
@@ -126,7 +127,7 @@ TEST(VertBlockBuilder, Reset) {
   auto comparator = intComparator();
   options.comparator = comparator.get();
 
-  VertBlockBuilder builder(&options);
+  VertBlockBuilder builder(&options,PLAIN);
 
   char buffer[12];
   Slice key(buffer, 12);

@@ -10,15 +10,27 @@
 
 namespace colsm {
 
-VertSectionBuilder::VertSectionBuilder(EncodingType enc_type,
-                                       uint32_t start_value)
-    : num_entry_(0), value_enc_type_(enc_type), start_value_(start_value) {
-  key_encoder_ = u32::EncodingFactory::Get(BITPACK).encoder();
-  seq_encoder_ = u64::EncodingFactory::Get(PLAIN).encoder();
-  type_encoder_ = u8::EncodingFactory::Get(RUNLENGTH).encoder();
+VertSectionBuilder::VertSectionBuilder(EncodingType enc_type)
+    : num_entry_(0), value_enc_type_(enc_type) {
+    key_encoder_ = u32::EncodingFactory::Get(BITPACK).encoder();
+    seq_encoder_ = u64::EncodingFactory::Get(PLAIN).encoder();
+    type_encoder_ = u8::EncodingFactory::Get(RUNLENGTH).encoder();
 
-  Encoding& encoding = string::EncodingFactory::Get(enc_type);
-  value_encoder_ = encoding.encoder();
+    Encoding &encoding = string::EncodingFactory::Get(enc_type);
+    value_encoder_ = encoding.encoder();
+}
+
+void VertSectionBuilder::Open(uint32_t sv) {
+    start_value_ = sv;
+    num_entry_ = 0;
+  key_encoder_->Open();
+  seq_encoder_->Open();
+  type_encoder_->Open();
+  value_encoder_->Open();
+}
+
+void VertSectionBuilder::Reset() {
+    num_entry_ = 0;
 }
 
 void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
@@ -30,7 +42,7 @@ void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
   value_encoder_->Encode(value);
 }
 
-uint32_t VertSectionBuilder::EstimateSize() {
+uint32_t VertSectionBuilder::EstimateSize() const {
   return 28 + key_encoder_->EstimateSize() + seq_encoder_->EstimateSize() +
          type_encoder_->EstimateSize() + value_encoder_->EstimateSize();
 }
@@ -76,8 +88,9 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   value_encoder_->Dump(pointer);
 }
 
-VertBlockBuilder::VertBlockBuilder(const Options* options)
-    : BlockBuilder(options), section_limit_(256), offset_(0) {}
+VertBlockBuilder::VertBlockBuilder(const Options* options, EncodingType value_encoding)
+    : BlockBuilder(options), value_encoding_(value_encoding),
+    section_limit_(256), current_section_(value_encoding),offset_(0) {}
 
 // Assert the keys and values are both int32_t
 void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
@@ -86,75 +99,68 @@ void VertBlockBuilder::Add(const Slice& key, const Slice& value) {
   ParseInternalKey(key, &internal_key);
 
   // write other parts of the internal key
-  if (current_section_ == nullptr) {
+  if (current_section_.NumEntry()==0) {
     uint32_t intkey =
         *reinterpret_cast<const uint32_t*>(internal_key.user_key.data());
-    current_section_ = std::unique_ptr<VertSectionBuilder>(
-        new VertSectionBuilder(value_encoding_, intkey));
+    current_section_.Open(intkey);
   }
-  current_section_->Add(internal_key, value);
-  if (current_section_->NumEntry() >= section_limit_) {
+  current_section_.Add(internal_key, value);
+  if (current_section_.NumEntry() >= section_limit_) {
     DumpSection();
   }
 }
 
 void VertBlockBuilder::DumpSection() {
-  current_section_->Close();
-  meta_.AddSection(offset_, current_section_->StartValue());
-  offset_ += current_section_->EstimateSize();
+  current_section_.Close();
+  meta_.AddSection(offset_, current_section_.StartValue());
+  auto section_size = current_section_.EstimateSize();
+  offset_ += section_size;
 
-  section_buffer_.push_back(move(current_section_));
-
-  current_section_ = nullptr;
+  // Write section to buffer
+  auto buffer_end = buffer_.size();
+  buffer_.resize(buffer_end+section_size);
+  current_section_.Dump(buffer_.data()+buffer_end);
+  current_section_.Reset();
 }
 
 void VertBlockBuilder::Reset() {
-  section_buffer_.clear();
-  current_section_ = NULL;
+  current_section_.Reset();
   offset_ = 0;
   buffer_.clear();
   meta_.Reset();
 }
 
 Slice VertBlockBuilder::Finish() {
-  if (current_section_ != nullptr) {
+  if (current_section_.NumEntry()!=0) {
     DumpSection();
   }
   meta_.Finish();
 
   auto meta_size = meta_.EstimateSize();
-  auto section_size = offset_;
 
-  // Allocate Space
-  // TODO In real world this should be directly write to file
-  uint32_t buffer_size = meta_size + section_size + 4;
-
-  buffer_.resize(buffer_size);
-  uint8_t* internal_buffer = buffer_.data();
-
-  meta_.Write(internal_buffer);
-  auto pointer = internal_buffer + meta_size;
-
-  for (auto& sec : section_buffer_) {
-    auto sec_size = sec->EstimateSize();
-    sec->Dump(pointer);
-    pointer += sec_size;
-  }
-
+  // Allocate Space for meta
+  auto buffer_end = buffer_.size();
+  buffer_.resize(buffer_end + meta_size+8);
+  auto pointer = buffer_.data()+buffer_end;
+  meta_.Write(pointer);
+  pointer+=meta_size;
+  // Meta size
+  *((uint32_t*)pointer) = meta_size;
+  pointer+=4;
   // MAGIC
-  *((uint32_t*)(internal_buffer + meta_size + section_size)) = MAGIC;
+  *((uint32_t*)pointer) = MAGIC;
 
-  return Slice((const char*)internal_buffer, buffer_size);
+  return Slice((const char*)buffer_.data(),buffer_.size());
 }
 
-size_t VertBlockBuilder::CurrentSizeEstimate() const {
+size_t VertBlockBuilder::CurrentSizeEstimate() const{
   // sizes of meta
   auto meta_size = meta_.EstimateSize();
   auto section_size = offset_;
-  if (current_section_ != 0) {
+  if (current_section_.NumEntry()!= 0) {
     // The size of each new section is upper-bounded by two 64-bits
     meta_size += 16;
-    section_size += current_section_->EstimateSize();
+    section_size += current_section_.EstimateSize();
   }
   // sizes of dumped sections
 
@@ -162,8 +168,7 @@ size_t VertBlockBuilder::CurrentSizeEstimate() const {
 }
 
 bool VertBlockBuilder::empty() const {
-  return section_buffer_.empty() &&
-         (current_section_ == nullptr || current_section_->NumEntry() == 0);
+  return offset_ == 0 && current_section_.NumEntry() == 0;
 }
 
 }  // namespace colsm

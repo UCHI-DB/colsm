@@ -40,6 +40,7 @@ class BlockReadBenchmark : public benchmark::Fixture {
   // add members as needed
 
   BlockReadBenchmark() {
+      Threads(1);
     srand(time(nullptr));
     for (int i = 0; i < 10000; ++i) {
       target.push_back(rand() % 1000000);
@@ -90,8 +91,7 @@ class BlockReadBenchmark : public benchmark::Fixture {
     //        }
     {
       Options options;
-      VertBlockBuilder builder(&options);
-      builder.value_encoding_ = LENGTH;
+      VertBlockBuilder builder(&options,LENGTH);
 
       for (uint32_t i = 0; i < num_entry_; ++i) {
         *((uint32_t*)kbuffer_) = i;

@@ -8,8 +8,9 @@
 // As the entries are sorted by keys, we split the columns into blocks by key
 // and bit-pack them. The data format is as following:
 //
-//    data:      metadata
-//               sections {num_section}
+//    data:      sections {num_section}
+//               meta_data
+//               meta_size
 //               MAGIC
 //    metadata:  num_section    : uint32_t
 //               section_offsets: uint64_t{num_section}
@@ -31,9 +32,7 @@
 //               type {num_entry}
 //               values {num_entry}
 //
-//  We temporarily put metadata in header. Later this should be put in footer
-//  for writing big files.
-
+//
 //  The value column can be encoded with any valid encoding that supports
 //  fast skipping. For now we just use plain encoding
 
@@ -57,23 +56,27 @@ class VertSectionBuilder {
   uint32_t start_value_;
   EncodingType value_enc_type_;
 
-  std::unique_ptr<Encoder> key_encoder_;
-  std::unique_ptr<Encoder> seq_encoder_;
-  std::unique_ptr<Encoder> type_encoder_;
-  std::unique_ptr<Encoder> value_encoder_;
+  std::shared_ptr<Encoder> key_encoder_;
+  std::shared_ptr<Encoder> seq_encoder_;
+  std::shared_ptr<Encoder> type_encoder_;
+  std::shared_ptr<Encoder> value_encoder_;
 
  public:
-  VertSectionBuilder(EncodingType enc_type, uint32_t);
+  VertSectionBuilder(EncodingType enc_type);
+
+  virtual ~VertSectionBuilder() = default;
+
+  void Open(uint32_t);
 
   uint32_t StartValue() const { return start_value_; }
 
-  void StartValue(uint32_t sv) { start_value_ = sv; }
+  void Reset();
 
   void Add(ParsedInternalKey key, const Slice& value);
 
   uint32_t NumEntry() const { return num_entry_; }
 
-  uint32_t EstimateSize();
+  uint32_t EstimateSize() const;
 
   void Close();
 
@@ -85,9 +88,9 @@ class VertSectionBuilder {
  */
 class VertBlockBuilder : public BlockBuilder {
  public:
-  EncodingType value_encoding_ = EncodingType::PLAIN;
+  EncodingType value_encoding_ = EncodingType::LENGTH;
 
-  explicit VertBlockBuilder(const Options* options);
+  explicit VertBlockBuilder(const Options* options, EncodingType);
 
   VertBlockBuilder(const VertBlockBuilder&) = delete;
 
@@ -118,13 +121,11 @@ class VertBlockBuilder : public BlockBuilder {
   uint32_t section_limit_;
 
   VertBlockMeta meta_;
-  std::vector<std::unique_ptr<VertSectionBuilder>> section_buffer_;
+  VertSectionBuilder current_section_;
 
   uint64_t offset_;
 
   std::vector<uint8_t> buffer_;
-
-  std::unique_ptr<VertSectionBuilder> current_section_ = nullptr;
 
   void DumpSection();
 };

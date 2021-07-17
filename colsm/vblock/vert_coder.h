@@ -19,6 +19,8 @@ class Encoder {
  public:
   virtual ~Encoder() = default;
 
+  virtual void Open() {}
+
   virtual void Encode(const Slice&) {}
 
   virtual void Encode(const uint64_t&) {}
@@ -54,9 +56,9 @@ class Decoder {
 
 class Encoding {
  public:
-  virtual std::unique_ptr<Encoder> encoder() = 0;
+  virtual std::shared_ptr<Encoder> encoder() = 0;
 
-  virtual std::unique_ptr<Decoder> decoder() = 0;
+  virtual std::shared_ptr<Decoder> decoder() = 0;
 };
 
 enum EncodingType {

@@ -41,7 +41,7 @@ struct TableBuilder::Rep {
     index_block_options.block_restart_interval = 1;
     if (vformat) {
       data_block =
-          std::unique_ptr<BlockBuilder>(new VertBlockBuilder(&options));
+          std::unique_ptr<BlockBuilder>(new VertBlockBuilder(&options,LENGTH));
     } else {
       data_block = std::unique_ptr<BlockBuilder>(new BlockBuilder(&options));
     }
