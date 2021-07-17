@@ -297,7 +297,7 @@ class VertBlockCore::VIter : public Iterator {
         meta_(meta),
         data_pointer_(data),
         key_(key_buffer_, 12) {
-    ReadSection(0);
+//    ReadSection(0);
   }
 
   void Seek(const Slice& target) override {

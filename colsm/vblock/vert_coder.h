@@ -56,7 +56,7 @@ class Decoder {
 
 class Encoding {
  public:
-  virtual std::shared_ptr<Encoder> encoder() = 0;
+  virtual std::unique_ptr<Encoder> encoder() = 0;
 
   virtual std::shared_ptr<Decoder> decoder() = 0;
 };

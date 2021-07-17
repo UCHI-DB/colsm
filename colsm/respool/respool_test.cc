@@ -6,27 +6,101 @@
 
 #include <gtest/gtest.h>
 
-class ResPoolObj {
+class LockPoolObj {
  public:
     int value_;
-  ResPoolObj() {
+  LockPoolObj() {
       static int counter = 0;
       counter++;
       value_ = counter;
   }
 
-  virtual ~ResPoolObj() {}
+  virtual ~LockPoolObj() {}
+};
+class SimplePoolObj {
+public:
+    int value_;
+    SimplePoolObj() {
+        static int counter = 0;
+        counter++;
+        value_ = counter;
+    }
+
+    virtual ~SimplePoolObj() {}
 };
 
-TEST(ResPool, Get) {
-  colsm::ResPool<ResPoolObj> pool(10, []() { return new ResPoolObj(); });
+class LockFreePoolObj {
+public:
+    int value_;
+    LockFreePoolObj() {
+        static int counter = 0;
+        counter++;
+        value_ = counter;
+    }
 
-  auto val1 = pool.Get();
-    auto val2 = pool.Get();
-    auto val3 = pool.Get();
-    auto val4 = pool.Get();
-    auto val5 = pool.Get();
-    auto val6 = pool.Get();
+    virtual ~LockFreePoolObj() {}
+};
+TEST(LockPool, Get) {
+    colsm::lock_pool<LockPoolObj> pool(10, []() { return new LockPoolObj(); });
+
+    auto val1 = pool.get();
+    auto val2 = pool.get();
+    auto val3 = pool.get();
+    auto val4 = pool.get();
+    auto val5 = pool.get();
+    auto val6 = pool.get();
+
+    EXPECT_EQ(val1->value_,10);
+    EXPECT_EQ(val2->value_,9);
+    EXPECT_EQ(val3->value_,8);
+    EXPECT_EQ(val4->value_,7);
+    EXPECT_EQ(val5->value_,6);
+    EXPECT_EQ(val6->value_,5);
+
+    {
+        auto val7 = pool.get();
+        EXPECT_EQ(val7->value_,4);
+    }
+
+    auto val8 = pool.get();
+    EXPECT_EQ(val8->value_,4);
+}
+
+TEST(SimplePool, Get) {
+    colsm::simple_pool<SimplePoolObj> pool(10, []() { return new SimplePoolObj(); });
+
+    auto val1 = pool.get();
+    auto val2 = pool.get();
+    auto val3 = pool.get();
+    auto val4 = pool.get();
+    auto val5 = pool.get();
+    auto val6 = pool.get();
+
+    EXPECT_EQ(val1->value_,10);
+    EXPECT_EQ(val2->value_,9);
+    EXPECT_EQ(val3->value_,8);
+    EXPECT_EQ(val4->value_,7);
+    EXPECT_EQ(val5->value_,6);
+    EXPECT_EQ(val6->value_,5);
+
+    {
+        auto val7 = pool.get();
+        EXPECT_EQ(val7->value_,4);
+    }
+
+    auto val8 = pool.get();
+    EXPECT_EQ(val8->value_,4);
+}
+
+TEST(LockFreePool, Get) {
+  colsm::lockfree_pool<LockFreePoolObj> pool(10, []() { return new LockFreePoolObj(); });
+
+  auto val1 = pool.get();
+    auto val2 = pool.get();
+    auto val3 = pool.get();
+    auto val4 = pool.get();
+    auto val5 = pool.get();
+    auto val6 = pool.get();
 
     EXPECT_EQ(val1->value_,1);
     EXPECT_EQ(val2->value_,2);
@@ -36,11 +110,11 @@ TEST(ResPool, Get) {
     EXPECT_EQ(val6->value_,6);
 
     {
-        auto val7 = pool.Get();
+        auto val7 = pool.get();
         EXPECT_EQ(val7->value_,7);
     }
 
-    auto val8 = pool.Get();
+    auto val8 = pool.get();
     EXPECT_EQ(val8->value_,7);
 }
 

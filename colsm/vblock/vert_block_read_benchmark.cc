@@ -40,7 +40,6 @@ class BlockReadBenchmark : public benchmark::Fixture {
   // add members as needed
 
   BlockReadBenchmark() {
-      Threads(1);
     srand(time(nullptr));
     for (int i = 0; i < 10000; ++i) {
       target.push_back(rand() % 1000000);

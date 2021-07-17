@@ -455,6 +455,7 @@ if(LEVELDB_BUILD_BENCHMARKS)
     target_compile_options(${colsm_benchmark_name} PUBLIC ${SBOOST_SIMD_FLAGS})
   endfunction(colsm_benchmark)
 
+  colsm_benchmark(respool_benchmark colsm/respool/respool_benchmark.cc)
   colsm_benchmark(vert_block_read_benchmark colsm/vblock/vert_block_read_benchmark.cc)
   colsm_benchmark(vert_block_merge_benchmark colsm/vblock/vert_block_merge_benchmark.cc)
   colsm_benchmark(vert_coder_benchmark colsm/vblock/vert_coder_benchmark.cc)

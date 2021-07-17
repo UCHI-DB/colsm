@@ -91,20 +91,20 @@ inline int64_t zigzagDecoding(uint64_t value) {
 template <class E, class D>
 class EncodingTemplate : public Encoding {
  private:
-  //    ResPool<Encoder> epool_;
-  //    ResPool<Decoder> dpool_;
+      simple_pool<Encoder> epool_;
+      simple_pool<Decoder> dpool_;
  public:
-  //    EncodingTemplate(): epool_(100, [](){return new
-  //    E();}),dpool_(100,[](){return new D();}) {}
+      EncodingTemplate(): epool_(10, [](){return new
+      E();}),dpool_(10,[](){return new D();}) {}
 
-  std::shared_ptr<Encoder> encoder() override {
-    //    return epool_.Get();
-    return std::make_shared<E>();
+  std::unique_ptr<Encoder> encoder() override {
+//        return epool_.get();
+    return std::make_unique<E>();
   }
 
   std::shared_ptr<Decoder> decoder() override {
-    //    return dpool_.Get();
-    return std::make_shared<D>();
+        return dpool_.get();
+//    return std::make_unique<D>();
   }
 };
 

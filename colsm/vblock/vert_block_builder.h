@@ -56,10 +56,10 @@ class VertSectionBuilder {
   uint32_t start_value_;
   EncodingType value_enc_type_;
 
-  std::shared_ptr<Encoder> key_encoder_;
-  std::shared_ptr<Encoder> seq_encoder_;
-  std::shared_ptr<Encoder> type_encoder_;
-  std::shared_ptr<Encoder> value_encoder_;
+  std::unique_ptr<Encoder> key_encoder_;
+  std::unique_ptr<Encoder> seq_encoder_;
+  std::unique_ptr<Encoder> type_encoder_;
+  std::unique_ptr<Encoder> value_encoder_;
 
  public:
   VertSectionBuilder(EncodingType enc_type);
