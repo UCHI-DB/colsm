@@ -72,6 +72,7 @@ TEST(StrLength, EncDec) {
 
   std::stringstream ss;
 
+  encoder->Open();
   uint32_t size = 8;
   for (int i = 0; i < 10000; ++i) {
     ss.str(std::string());

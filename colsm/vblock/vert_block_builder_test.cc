@@ -87,7 +87,7 @@ class VertBlockMetaForTest : public VertBlockMeta {
 
 TEST(VertBlockBuilder, Build) {
   Options option;
-  VertBlockBuilder builder(&option,LENGTH);
+  VertBlockBuilder builder(&option, LENGTH);
 
   char buffer[12];
   Slice key(buffer, 12);
@@ -102,16 +102,19 @@ TEST(VertBlockBuilder, Build) {
   // section = 28 + 145 + 1024 + 4 + 2056 = 3257
   // last_section size 104
   // section = 28 + 124 + 832 + 4 + 1672 = 2660
+  // meta_size: 4
   // MAGIC: 4
-  EXPECT_EQ(25552, result.size());
+  EXPECT_EQ(25556, result.size());
 
   uint8_t* data = (uint8_t*)result.data();
 
   uint32_t mgc = *((uint32_t*)(result.data() + result.size() - 4));
   EXPECT_EQ(mgc, MAGIC);
 
+  uint32_t meta_size = *((uint32_t*)(result.data() + result.size() - 8));
+
   VertBlockMetaForTest meta;
-  meta.Read(data);
+  meta.Read(data + result.size() - 8 - meta_size);
   EXPECT_EQ(8, meta.NumSection());
   auto& offset = meta.Offset();
   EXPECT_EQ(8, offset.size());
@@ -127,7 +130,7 @@ TEST(VertBlockBuilder, Reset) {
   auto comparator = intComparator();
   options.comparator = comparator.get();
 
-  VertBlockBuilder builder(&options,PLAIN);
+  VertBlockBuilder builder(&options, PLAIN);
 
   char buffer[12];
   Slice key(buffer, 12);
@@ -144,16 +147,20 @@ TEST(VertBlockBuilder, Reset) {
     // section = 28 + 145 + 1024 + 4 + 2048 = 3249
     // last_section size 104
     // section = 28 + 124 + 832 + 4 + 1664 = 2652
+    // meta_size: 4
     // MAGIC: 4
-    EXPECT_EQ(25488, result.size()) << repeat;
+    EXPECT_EQ(25492, result.size()) << repeat;
 
     uint8_t* data = (uint8_t*)result.data();
 
     uint32_t mgc = *((uint32_t*)(result.data() + result.size() - 4));
     EXPECT_EQ(mgc, MAGIC);
 
+    uint32_t meta_size = *((uint32_t*)(result.data() + result.size() - 8));
+
     VertBlockMetaForTest meta;
-    meta.Read(data);
+    meta.Read(data + result.size() - 8 - meta_size);
+
     EXPECT_EQ(8, meta.NumSection());
     auto& offset = meta.Offset();
     EXPECT_EQ(8, offset.size());

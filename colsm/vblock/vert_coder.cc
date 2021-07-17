@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "util/coding.h"
+
 #include "../respool/respool.h"
 
 using namespace leveldb;
@@ -89,20 +90,21 @@ inline int64_t zigzagDecoding(uint64_t value) {
 
 template <class E, class D>
 class EncodingTemplate : public Encoding {
-private:
-//    ResPool<Encoder> epool_;
-//    ResPool<Decoder> dpool_;
+ private:
+  //    ResPool<Encoder> epool_;
+  //    ResPool<Decoder> dpool_;
  public:
-//    EncodingTemplate(): epool_(100, [](){return new E();}),dpool_(100,[](){return new D();}) {}
+  //    EncodingTemplate(): epool_(100, [](){return new
+  //    E();}),dpool_(100,[](){return new D();}) {}
 
   std::shared_ptr<Encoder> encoder() override {
-//    return epool_.Get();
-return std::make_shared<E>();
+    //    return epool_.Get();
+    return std::make_shared<E>();
   }
 
   std::shared_ptr<Decoder> decoder() override {
-//    return dpool_.Get();
-return std::make_shared<D>();
+    //    return dpool_.Get();
+    return std::make_shared<D>();
   }
 };
 
@@ -112,9 +114,7 @@ class PlainEncoder : public Encoder {
   std::vector<uint8_t> buffer_;
 
  public:
-    void Open() override {
-        buffer_.clear();
-    }
+  void Open() override { buffer_.clear(); }
 
   void Encode(const Slice& value) override {
     auto buffer_size = buffer_.size();
@@ -125,8 +125,7 @@ class PlainEncoder : public Encoder {
 
   uint32_t EstimateSize() override { return buffer_.size(); }
 
-  void Close() override {
-  }
+  void Close() override {}
 
   void Dump(uint8_t* output) override {
     memcpy(output, buffer_.data(), buffer_.size());
@@ -169,12 +168,14 @@ class LengthEncoder : public Encoder {
 
  public:
   LengthEncoder() {
-      //length_.push_back(0);
+    // length_.push_back(0);
   }
 
-  void Open() {
-      length_.clear();
-      length_.push_back(0);
+  void Open() override {
+    offset_ = 0;
+    length_.clear();
+    length_.push_back(0);
+    buffer_.clear();
   }
 
   void Encode(const Slice& value) override {
@@ -229,11 +230,9 @@ class LengthDecoder : public Decoder {
   }
 };
 
-
 Encoding& EncodingFactory::Get(EncodingType encoding) {
-
-    static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
-    static EncodingTemplate<LengthEncoder, LengthDecoder> lengthEncoding;
+  static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
+  static EncodingTemplate<LengthEncoder, LengthDecoder> lengthEncoding;
   switch (encoding) {
     case PLAIN:
       return plainEncoding;
@@ -252,9 +251,7 @@ class PlainEncoder : public Encoder {
   std::vector<uint8_t> buffer_;
 
  public:
-    void Open() override {
-        buffer_.clear();
-    }
+  void Open() override { buffer_.clear(); }
 
   void Encode(const uint64_t& value) override { write64(buffer_, value); }
 
@@ -294,9 +291,9 @@ class DeltaEncoder : public Encoder {
 
  public:
   void Open() override {
-      buffer_.clear();
-      delta_prev_ = 0;
-      rle_counter_ = 0;
+    buffer_.clear();
+    delta_prev_ = 0;
+    rle_counter_ = 0;
   }
 
   void Encode(const uint64_t& value) override {
@@ -365,12 +362,11 @@ class DeltaDecoder : public Decoder {
   }
 };
 
-
 Encoding& EncodingFactory::Get(EncodingType encoding) {
-    static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
-    static EncodingTemplate<DeltaEncoder, DeltaDecoder> deltaEncoding;
+  static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
+  static EncodingTemplate<DeltaEncoder, DeltaDecoder> deltaEncoding;
 
-    switch (encoding) {
+  switch (encoding) {
     case PLAIN:
       return plainEncoding;
     case DELTA:
@@ -387,9 +383,7 @@ class PlainEncoder : public Encoder {
   std::vector<uint8_t> buffer_;
 
  public:
-    void Open() override {
-        buffer_.clear();
-    }
+  void Open() override { buffer_.clear(); }
   void Encode(const uint32_t& value) override { write32(buffer_, value); }
 
   uint32_t EstimateSize() override { return buffer_.size(); }
@@ -420,9 +414,7 @@ class BitpackEncoder : public Encoder {
   std::vector<uint32_t> buffer_;
 
  public:
-  void Open() override {
-      buffer_.clear();
-  }
+  void Open() override { buffer_.clear(); }
 
   void Encode(const uint32_t& value) override { buffer_.push_back(value); }
 
@@ -510,9 +502,7 @@ class PlainEncoder : public Encoder {
   std::vector<uint8_t> buffer_;
 
  public:
-  void Open() {
-      buffer_.clear();
-  }
+  void Open() { buffer_.clear(); }
   void Encode(const uint8_t& value) override { buffer_.push_back(value); }
 
   uint32_t EstimateSize() override { return buffer_.size(); }
@@ -547,10 +537,10 @@ class RleEncoder : public Encoder {
   void writeEntry() { buffer_.push_back((last_counter_ << 8) + last_value_); }
 
  public:
-    void Open() override {
-      buffer_.clear();
-      last_value_=0xFF;
-      last_counter_ = 0;
+  void Open() override {
+    buffer_.clear();
+    last_value_ = 0xFF;
+    last_counter_ = 0;
   }
   void Encode(const uint8_t& entry) override {
     if (entry == last_value_ && last_counter_ != 0) {
@@ -631,9 +621,9 @@ class RleVarIntEncoder : public Encoder {
 
  public:
   void Open() override {
-      buffer_.clear();
-      last_value_ = 0xFF;
-      last_counter_ = 0;
+    buffer_.clear();
+    last_value_ = 0xFF;
+    last_counter_ = 0;
   }
 
   void Encode(const uint8_t& entry) override {
@@ -698,8 +688,8 @@ class RleVarIntDecoder : public Decoder {
 
 Encoding& EncodingFactory::Get(EncodingType encoding) {
   static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
-  static  EncodingTemplate<RleEncoder, RleDecoder> rleEncoding;
-  static   EncodingTemplate<RleVarIntEncoder, RleVarIntDecoder> rleVarEncoding;
+  static EncodingTemplate<RleEncoder, RleDecoder> rleEncoding;
+  static EncodingTemplate<RleVarIntEncoder, RleVarIntDecoder> rleVarEncoding;
 
   switch (encoding) {
     case PLAIN:

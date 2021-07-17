@@ -141,6 +141,7 @@ struct LEVELDB_EXPORT Options {
   // NewBloomFilterPolicy() here.
   const FilterPolicy* filter_policy = nullptr;
 
+  int section_limit = 128;
 };
 
 // Options that control read operations
