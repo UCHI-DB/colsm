@@ -87,6 +87,7 @@ class VertBlockMetaForTest : public VertBlockMeta {
 
 TEST(VertBlockBuilder, Build) {
   Options option;
+  option.section_limit=128;
   VertBlockBuilder builder(&option, LENGTH);
 
   char buffer[12];
@@ -127,6 +128,7 @@ TEST(VertBlockBuilder, Build) {
 
 TEST(VertBlockBuilder, Reset) {
   Options options;
+  options.section_limit = 128;
   auto comparator = intComparator();
   options.comparator = comparator.get();
 

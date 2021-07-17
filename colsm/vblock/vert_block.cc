@@ -198,20 +198,23 @@ void VertSection::Read(const uint8_t* in) {
   bit_width_ = *(pointer);
   key_data_ = pointer + 1;
   assert(key_enc == BITPACK);
-  key_decoder_ = u32::EncodingFactory::Get(BITPACK).decoder();
-  key_decoder_->Attach(pointer);
+//  key_decoder_ = u32::EncodingFactory::Get(BITPACK).decoder();
+  key_decoder_.Attach(pointer);
   pointer += key_size;
 
-  seq_decoder_ = u64::EncodingFactory::Get(seq_enc).decoder();
-  seq_decoder_->Attach(pointer);
+//  seq_decoder_ = u64::EncodingFactory::Get(seq_enc).decoder();
+  assert(seq_enc == PLAIN);
+  seq_decoder_.Attach(pointer);
   pointer += seq_size;
 
-  type_decoder_ = u8::EncodingFactory::Get(type_enc).decoder();
-  type_decoder_->Attach(pointer);
+//  type_decoder_ = u8::EncodingFactory::Get(type_enc).decoder();
+  assert(type_enc = RUNLENGTH);
+  type_decoder_.Attach(pointer);
   pointer += type_size;
 
-  value_decoder_ = string::EncodingFactory::Get(value_enc).decoder();
-  value_decoder_->Attach(pointer);
+//  value_decoder_= string::EncodingFactory::Get(value_enc).decoder();
+  assert(value_enc == LENGTH);
+  value_decoder_.Attach(pointer);
 }
 
 int32_t VertSection::Find(uint32_t target) {

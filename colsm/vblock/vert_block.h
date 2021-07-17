@@ -91,10 +91,14 @@ class VertSection {
   const uint8_t* key_data_;
   uint8_t bit_width_;
 
-  std::shared_ptr<Decoder> key_decoder_;
-  std::shared_ptr<Decoder> seq_decoder_;
-  std::shared_ptr<Decoder> type_decoder_;
-  std::shared_ptr<Decoder> value_decoder_;
+//  std::shared_ptr<Decoder> key_decoder_;
+//  std::shared_ptr<Decoder> seq_decoder_;
+//  std::shared_ptr<Decoder> type_decoder_;
+//  std::shared_ptr<Decoder> value_decoder_;
+  encoding::u32::BitpackDecoder key_decoder_;
+  encoding::u64::PlainDecoder seq_decoder_;
+  encoding::u8::RleDecoder type_decoder_;
+  encoding::string::LengthDecoder value_decoder_;
 
  public:
   VertSection();
@@ -114,10 +118,10 @@ class VertSection {
    *
    * @return
    */
-  Decoder* KeyDecoder() { return key_decoder_.get(); }
-  Decoder* SeqDecoder() { return seq_decoder_.get(); }
-  Decoder* TypeDecoder() { return type_decoder_.get(); }
-  Decoder* ValueDecoder() { return value_decoder_.get(); }
+  Decoder* KeyDecoder() { return &key_decoder_; }
+  Decoder* SeqDecoder() { return &seq_decoder_; }
+  Decoder* TypeDecoder() { return &type_decoder_; }
+  Decoder* ValueDecoder() { return &value_decoder_; }
 
   void Read(const uint8_t*);
 

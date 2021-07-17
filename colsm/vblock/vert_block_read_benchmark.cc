@@ -124,7 +124,6 @@ BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State& state) {
       Slice t(at, 12);
       ite->Seek(t);
       benchmark::DoNotOptimize(ite->key());
-      //    std::cout << *((int32_t*)key_.data()) << std::endl;
       delete ite;
     }
   }

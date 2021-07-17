@@ -12,10 +12,6 @@ namespace colsm {
 
 VertSectionBuilder::VertSectionBuilder(EncodingType enc_type)
     : num_entry_(0), value_enc_type_(enc_type) {
-  key_encoder_ = u32::EncodingFactory::Get(BITPACK).encoder();
-  seq_encoder_ = u64::EncodingFactory::Get(PLAIN).encoder();
-  type_encoder_ = u8::EncodingFactory::Get(RUNLENGTH).encoder();
-
   Encoding& encoding = string::EncodingFactory::Get(enc_type);
   value_encoder_ = encoding.encoder();
 }
@@ -23,9 +19,9 @@ VertSectionBuilder::VertSectionBuilder(EncodingType enc_type)
 void VertSectionBuilder::Open(uint32_t sv) {
   start_value_ = sv;
   num_entry_ = 0;
-  key_encoder_->Open();
-  seq_encoder_->Open();
-  type_encoder_->Open();
+  key_encoder_.Open();
+  seq_encoder_.Open();
+  type_encoder_.Open();
   value_encoder_->Open();
 }
 
@@ -34,21 +30,21 @@ void VertSectionBuilder::Reset() { num_entry_ = 0; }
 void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
   num_entry_++;
 
-  key_encoder_->Encode((*(uint32_t*)(key.user_key.data()) - start_value_));
-  seq_encoder_->Encode(key.sequence);
-  type_encoder_->Encode((uint8_t)key.type);
+  key_encoder_.Encode((*(uint32_t*)(key.user_key.data()) - start_value_));
+  seq_encoder_.Encode(key.sequence);
+  type_encoder_.Encode((uint8_t)key.type);
   value_encoder_->Encode(value);
 }
 
 uint32_t VertSectionBuilder::EstimateSize() const {
-  return 28 + key_encoder_->EstimateSize() + seq_encoder_->EstimateSize() +
-         type_encoder_->EstimateSize() + value_encoder_->EstimateSize();
+  return 28 + key_encoder_.EstimateSize() + seq_encoder_.EstimateSize() +
+         type_encoder_.EstimateSize() + value_encoder_->EstimateSize();
 }
 
 void VertSectionBuilder::Close() {
-  key_encoder_->Close();
-  seq_encoder_->Close();
-  type_encoder_->Close();
+  key_encoder_.Close();
+  seq_encoder_.Close();
+  type_encoder_.Close();
   value_encoder_->Close();
 }
 
@@ -59,9 +55,9 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   *reinterpret_cast<uint32_t*>(pointer) = start_value_;
   pointer += 4;
 
-  auto key_size = key_encoder_->EstimateSize();
-  auto seq_size = seq_encoder_->EstimateSize();
-  auto type_size = type_encoder_->EstimateSize();
+  auto key_size = key_encoder_.EstimateSize();
+  auto seq_size = seq_encoder_.EstimateSize();
+  auto type_size = type_encoder_.EstimateSize();
   auto value_size = value_encoder_->EstimateSize();
 
   *((uint32_t*)pointer) = key_size;
@@ -77,11 +73,11 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   pointer += 4;
   *(pointer++) = value_enc_type_;
 
-  key_encoder_->Dump(pointer);
+  key_encoder_.Dump(pointer);
   pointer += key_size;
-  seq_encoder_->Dump(pointer);
+  seq_encoder_.Dump(pointer);
   pointer += seq_size;
-  type_encoder_->Dump(pointer);
+  type_encoder_.Dump(pointer);
   pointer += type_size;
   value_encoder_->Dump(pointer);
 }

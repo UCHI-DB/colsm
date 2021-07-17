@@ -91,144 +91,113 @@ inline int64_t zigzagDecoding(uint64_t value) {
 template <class E, class D>
 class EncodingTemplate : public Encoding {
  private:
-      simple_pool<Encoder> epool_;
-      simple_pool<Decoder> dpool_;
+  simple_pool<Encoder> epool_;
+  simple_pool<Decoder> dpool_;
+
  public:
-      EncodingTemplate(): epool_(10, [](){return new
-      E();}),dpool_(10,[](){return new D();}) {}
+  EncodingTemplate()
+      : epool_(10, []() { return new E(); }),
+        dpool_(10, []() { return new D(); }) {}
 
   std::unique_ptr<Encoder> encoder() override {
-//        return epool_.get();
+    //        return epool_.get();
     return std::make_unique<E>();
   }
 
   std::shared_ptr<Decoder> decoder() override {
-        return dpool_.get();
-//    return std::make_unique<D>();
+    return dpool_.get();
+    //    return std::make_unique<D>();
   }
 };
 
 namespace string {
-class PlainEncoder : public Encoder {
- private:
-  std::vector<uint8_t> buffer_;
+void PlainEncoder::Open() { buffer_.clear(); }
 
- public:
-  void Open() override { buffer_.clear(); }
+void PlainEncoder::Encode(const Slice& value) {
+  auto buffer_size = buffer_.size();
+  buffer_.resize(buffer_size + value.size() + 4);
+  *((uint32_t*)(buffer_.data() + buffer_size)) = value.size();
+  memcpy(buffer_.data() + buffer_size + 4, value.data(), value.size());
+}
 
-  void Encode(const Slice& value) override {
-    auto buffer_size = buffer_.size();
-    buffer_.resize(buffer_size + value.size() + 4);
-    *((uint32_t*)(buffer_.data() + buffer_size)) = value.size();
-    memcpy(buffer_.data() + buffer_size + 4, value.data(), value.size());
-  }
+uint32_t PlainEncoder::EstimateSize() const { return buffer_.size(); }
 
-  uint32_t EstimateSize() override { return buffer_.size(); }
+void PlainEncoder::Close() {}
 
-  void Close() override {}
+void PlainEncoder::Dump(uint8_t* output) {
+  memcpy(output, buffer_.data(), buffer_.size());
+}
 
-  void Dump(uint8_t* output) override {
-    memcpy(output, buffer_.data(), buffer_.size());
-  }
-};
+void PlainDecoder::Attach(const uint8_t* buffer) {
+  length_pointer_ = (uint8_t*)buffer;
+  data_pointer_ = buffer + 4;
+}
 
-class PlainDecoder : public Decoder {
- private:
-  uint8_t* length_pointer_;
-  const uint8_t* data_pointer_;
-
- public:
-  void Attach(const uint8_t* buffer) override {
-    length_pointer_ = (uint8_t*)buffer;
-    data_pointer_ = buffer + 4;
-  }
-
-  void Skip(uint32_t offset) override {
-    for (uint32_t i = 0; i < offset; ++i) {
-      auto length = *((uint32_t*)length_pointer_);
-      data_pointer_ += length + 4;
-      length_pointer_ += length + 4;
-    }
-  }
-
-  Slice Decode() override {
+void PlainDecoder::Skip(uint32_t offset) {
+  for (uint32_t i = 0; i < offset; ++i) {
     auto length = *((uint32_t*)length_pointer_);
-    auto result = Slice(reinterpret_cast<const char*>(data_pointer_), length);
     data_pointer_ += length + 4;
     length_pointer_ += length + 4;
-    return result;
   }
-};
+}
 
-class LengthEncoder : public Encoder {
- private:
-  uint32_t offset_ = 0;
-  std::vector<uint32_t> length_;
-  std::string buffer_;
+Slice PlainDecoder::Decode() {
+  auto length = *((uint32_t*)length_pointer_);
+  auto result = Slice(reinterpret_cast<const char*>(data_pointer_), length);
+  data_pointer_ += length + 4;
+  length_pointer_ += length + 4;
+  return result;
+}
 
- public:
-  LengthEncoder() {
-    // length_.push_back(0);
-  }
+void LengthEncoder::Open() {
+  offset_ = 0;
+  length_.clear();
+  length_.push_back(0);
+  buffer_.clear();
+}
 
-  void Open() override {
-    offset_ = 0;
-    length_.clear();
-    length_.push_back(0);
-    buffer_.clear();
-  }
+void LengthEncoder::Encode(const Slice& value) {
+  offset_ += value.size();
+  length_.push_back(offset_);
+  buffer_.append(value.data(), value.size());
+}
 
-  void Encode(const Slice& value) override {
-    offset_ += value.size();
-    length_.push_back(offset_);
-    buffer_.append(value.data(), value.size());
-  }
+uint32_t LengthEncoder::EstimateSize() const {
+  return length_.size() * 4 + buffer_.size() + 4;
+}
 
-  uint32_t EstimateSize() override {
-    return length_.size() * 4 + buffer_.size() + 4;
-  }
+void LengthEncoder::Close() {}
 
-  void Close() override {}
+void LengthEncoder::Dump(uint8_t* output) {
+  auto pointer = output;
 
-  void Dump(uint8_t* output) override {
-    auto pointer = output;
+  auto len_size = sizeof(uint32_t) * length_.size();
+  *((uint32_t*)pointer) = len_size;
+  pointer += 4;
+  memcpy(pointer, length_.data(), len_size);
+  pointer += len_size;
+  memcpy(pointer, buffer_.data(), buffer_.size());
+}
 
-    auto len_size = sizeof(uint32_t) * length_.size();
-    *((uint32_t*)pointer) = len_size;
-    pointer += 4;
-    memcpy(pointer, length_.data(), len_size);
-    pointer += len_size;
-    memcpy(pointer, buffer_.data(), buffer_.size());
-  }
-};
+void LengthDecoder::Attach(const uint8_t* buffer) {
+  uint32_t data_pos = *((uint32_t*)buffer);
+  length_pointer_ = (uint32_t*)(buffer + 4);
+  data_base_ = buffer + data_pos + 4;
+  data_pointer_ = data_base_;
+}
 
-class LengthDecoder : public Decoder {
- private:
-  uint32_t* length_pointer_;
-  const uint8_t* data_base_;
-  const uint8_t* data_pointer_;
+void LengthDecoder::Skip(uint32_t offset) {
+  length_pointer_ += offset;
+  data_pointer_ = data_base_ + *length_pointer_;
+}
 
- public:
-  void Attach(const uint8_t* buffer) override {
-    uint32_t data_pos = *((uint32_t*)buffer);
-    length_pointer_ = (uint32_t*)(buffer + 4);
-    data_base_ = buffer + data_pos + 4;
-    data_pointer_ = data_base_;
-  }
-
-  void Skip(uint32_t offset) override {
-    length_pointer_ += offset;
-    data_pointer_ = data_base_ + *length_pointer_;
-  }
-
-  Slice Decode() override {
-    auto length = *(length_pointer_ + 1) - (*length_pointer_);
-    auto result = Slice(reinterpret_cast<const char*>(data_pointer_), length);
-    data_pointer_ += length;
-    length_pointer_++;
-    return result;
-  }
-};
+Slice LengthDecoder::Decode() {
+  auto length = *(length_pointer_ + 1) - (*length_pointer_);
+  auto result = Slice(reinterpret_cast<const char*>(data_pointer_), length);
+  data_pointer_ += length;
+  length_pointer_++;
+  return result;
+}
 
 Encoding& EncodingFactory::Get(EncodingType encoding) {
   static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
@@ -246,121 +215,90 @@ Encoding& EncodingFactory::Get(EncodingType encoding) {
 }  // namespace string
 
 namespace u64 {
-class PlainEncoder : public Encoder {
- private:
-  std::vector<uint8_t> buffer_;
 
- public:
-  void Open() override { buffer_.clear(); }
+void PlainEncoder::Open() { buffer_.clear(); }
 
-  void Encode(const uint64_t& value) override { write64(buffer_, value); }
+void PlainEncoder::Encode(const uint64_t& value) { write64(buffer_, value); }
 
-  uint32_t EstimateSize() override { return buffer_.size(); }
+uint32_t PlainEncoder::EstimateSize() const { return buffer_.size(); }
 
-  void Close() override {}
+void PlainEncoder::Close() {}
 
-  void Dump(uint8_t* output) override {
-    memcpy(output, buffer_.data(), buffer_.size());
-  }
-};
+void PlainEncoder::Dump(uint8_t* output) {
+  memcpy(output, buffer_.data(), buffer_.size());
+}
 
-class PlainDecoder : public Decoder {
- private:
-  uint64_t* raw_pointer_;
+void PlainDecoder::Attach(const uint8_t* buffer) {
+  raw_pointer_ = (uint64_t*)buffer;
+}
 
- public:
-  void Attach(const uint8_t* buffer) override {
-    raw_pointer_ = (uint64_t*)buffer;
-  }
+void PlainDecoder::Skip(uint32_t offset) { raw_pointer_ += offset; }
 
-  void Skip(uint32_t offset) override { raw_pointer_ += offset; }
+uint64_t PlainDecoder::DecodeU64() { return *(raw_pointer_++); }
 
-  uint64_t DecodeU64() override { return *(raw_pointer_++); }
-};
+void DeltaEncoder::Open() {
+  buffer_.clear();
+  delta_prev_ = 0;
+  rle_counter_ = 0;
+}
 
-/**
- * Delta and RLE hybrid encoding
- */
-class DeltaEncoder : public Encoder {
- private:
-  std::vector<uint8_t> buffer_;
-
-  int64_t delta_prev_ = 0;
-  uint64_t rle_value_;
-  uint32_t rle_counter_ = 0;
-
- public:
-  void Open() override {
-    buffer_.clear();
-    delta_prev_ = 0;
-    rle_counter_ = 0;
-  }
-
-  void Encode(const uint64_t& value) override {
-    auto delta = zigzagEncoding(value - delta_prev_);
-    if (delta != rle_value_) {
-      if (rle_counter_ > 0) {
-        writeVar64(buffer_, rle_value_);
-        writeVar32(buffer_, rle_counter_);
-      }
-      rle_value_ = delta;
-      rle_counter_ = 1;
-    } else {
-      rle_counter_++;
+void DeltaEncoder::Encode(const uint64_t& value) {
+  auto delta = zigzagEncoding(value - delta_prev_);
+  if (delta != rle_value_) {
+    if (rle_counter_ > 0) {
+      writeVar64(buffer_, rle_value_);
+      writeVar32(buffer_, rle_counter_);
     }
-    delta_prev_ = value;
+    rle_value_ = delta;
+    rle_counter_ = 1;
+  } else {
+    rle_counter_++;
   }
+  delta_prev_ = value;
+}
 
-  uint32_t EstimateSize() override {
-    return buffer_.size() + (rle_counter_ != 0) * 12;
+uint32_t DeltaEncoder::EstimateSize() const {
+  return buffer_.size() + (rle_counter_ != 0) * 12;
+}
+
+void DeltaEncoder::Close() {
+  writeVar64(buffer_, rle_value_);
+  writeVar32(buffer_, rle_counter_);
+  rle_counter_ = 0;
+}
+
+void DeltaEncoder::Dump(uint8_t* output) {
+  memcpy(output, buffer_.data(), buffer_.size());
+}
+
+void DeltaDecoder::LoadEntry() {
+  rle_value_ = zigzagDecoding(readVar64(pointer_));
+  rle_counter_ = readVar32(pointer_);
+}
+
+void DeltaDecoder::Attach(const uint8_t* buffer) {
+  pointer_ = (uint8_t*)buffer;
+}
+
+void DeltaDecoder::Skip(uint32_t offset) {
+  uint32_t remain = offset;
+  while (remain >= rle_counter_) {
+    remain -= rle_counter_;
+    base_ += rle_value_ * rle_counter_;
+    LoadEntry();
   }
+  rle_counter_ -= remain;
+  base_ += rle_value_ * remain;
+}
 
-  void Close() override {
-    writeVar64(buffer_, rle_value_);
-    writeVar32(buffer_, rle_counter_);
-    rle_counter_ = 0;
+uint64_t DeltaDecoder::DecodeU64() {
+  if (rle_counter_ == 0) {
+    LoadEntry();
   }
-
-  void Dump(uint8_t* output) override {
-    memcpy(output, buffer_.data(), buffer_.size());
-  }
-};
-
-class DeltaDecoder : public Decoder {
- private:
-  uint64_t base_ = 0;
-  uint64_t rle_value_;
-  uint32_t rle_counter_ = 0;
-  uint8_t* pointer_;
-
-  void LoadEntry() {
-    rle_value_ = zigzagDecoding(readVar64(pointer_));
-    rle_counter_ = readVar32(pointer_);
-  }
-
- public:
-  void Attach(const uint8_t* buffer) override { pointer_ = (uint8_t*)buffer; }
-
-  void Skip(uint32_t offset) override {
-    uint32_t remain = offset;
-    while (remain >= rle_counter_) {
-      remain -= rle_counter_;
-      base_ += rle_value_ * rle_counter_;
-      LoadEntry();
-    }
-    rle_counter_ -= remain;
-    base_ += rle_value_ * remain;
-  }
-
-  uint64_t DecodeU64() override {
-    if (rle_counter_ == 0) {
-      LoadEntry();
-    }
-    rle_counter_--;
-    base_ += rle_value_;
-    return base_;
-  }
-};
+  rle_counter_--;
+  base_ += rle_value_;
+  return base_;
+}
 
 Encoding& EncodingFactory::Get(EncodingType encoding) {
   static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
@@ -378,109 +316,82 @@ Encoding& EncodingFactory::Get(EncodingType encoding) {
 }  // namespace u64
 
 namespace u32 {
-class PlainEncoder : public Encoder {
- private:
-  std::vector<uint8_t> buffer_;
 
- public:
-  void Open() override { buffer_.clear(); }
-  void Encode(const uint32_t& value) override { write32(buffer_, value); }
+void PlainEncoder::Open() { buffer_.clear(); }
+void PlainEncoder::Encode(const uint32_t& value) { write32(buffer_, value); }
 
-  uint32_t EstimateSize() override { return buffer_.size(); }
+uint32_t PlainEncoder::EstimateSize() const { return buffer_.size(); }
 
-  void Close() override {}
+void PlainEncoder::Close() {}
 
-  void Dump(uint8_t* output) override {
-    memcpy(output, buffer_.data(), buffer_.size());
+void PlainEncoder::Dump(uint8_t* output) {
+  memcpy(output, buffer_.data(), buffer_.size());
+}
+
+void PlainDecoder::Attach(const uint8_t* buffer) {
+  raw_pointer_ = (uint32_t*)buffer;
+}
+
+void PlainDecoder::Skip(uint32_t offset) { raw_pointer_ += offset; }
+
+uint32_t PlainDecoder::DecodeU32() { return *(raw_pointer_++); }
+
+void BitpackEncoder::Open() { buffer_.clear(); }
+
+void BitpackEncoder::Encode(const uint32_t& value) { buffer_.push_back(value); }
+
+uint32_t BitpackEncoder::EstimateSize() const {
+  uint32_t bit_width = 32 - _lzcnt_u32(buffer_.back());
+  // The buffer should be large enough for a 256 bit read after valid data
+  uint32_t buffer_group_size = (buffer_.size() + 7) >> 3;
+  uint32_t size = 1 + bit_width * buffer_group_size + 32;
+  return size;
+}
+
+void BitpackEncoder::Close() {}
+
+void BitpackEncoder::Dump(uint8_t* output) {
+  uint8_t bit_width = 32 - _lzcnt_u32(buffer_.back());
+  *(output) = bit_width;
+  sboost::byteutils::bitpack(buffer_.data(), buffer_.size(), bit_width,
+                             output + 1);
+}
+
+void BitpackDecoder::LoadNextGroup() {
+  auto up = unpacker_->unpack(pointer_);
+  memcpy(unpacked_, (uint8_t*)&up, 32);
+  index_ = 0;
+  pointer_ += bit_width_;
+}
+
+void BitpackDecoder::Attach(const uint8_t* buffer) {
+  base_ = buffer;
+  bit_width_ = *buffer;
+  pointer_ = (uint8_t*)buffer + 1;
+  unpacker_ = sboost::unpackers[bit_width_];
+  LoadNextGroup();
+}
+
+void BitpackDecoder::Skip(uint32_t offset) {
+  index_ += offset;
+  auto group_index = index_ >> 3;
+  index_ &= 0x7;
+  if (group_index > 0) {
+    pointer_ += (group_index - 1) * bit_width_;
+    auto index_back = index_;
+    LoadNextGroup();
+    index_ = index_back;
   }
-};
+}
 
-class PlainDecoder : public Decoder {
- private:
-  uint32_t* raw_pointer_;
-
- public:
-  void Attach(const uint8_t* buffer) override {
-    raw_pointer_ = (uint32_t*)buffer;
-  }
-
-  void Skip(uint32_t offset) override { raw_pointer_ += offset; }
-
-  uint32_t DecodeU32() override { return *(raw_pointer_++); }
-};
-
-class BitpackEncoder : public Encoder {
- private:
-  std::vector<uint32_t> buffer_;
-
- public:
-  void Open() override { buffer_.clear(); }
-
-  void Encode(const uint32_t& value) override { buffer_.push_back(value); }
-
-  uint32_t EstimateSize() override {
-    uint32_t bit_width = 32 - _lzcnt_u32(buffer_.back());
-    // The buffer should be large enough for a 256 bit read after valid data
-    uint32_t buffer_group_size = (buffer_.size() + 7) >> 3;
-    uint32_t size = 1 + bit_width * buffer_group_size + 32;
-    return size;
-  }
-
-  void Close() override {}
-
-  void Dump(uint8_t* output) override {
-    uint8_t bit_width = 32 - _lzcnt_u32(buffer_.back());
-    *(output) = bit_width;
-    sboost::byteutils::bitpack(buffer_.data(), buffer_.size(), bit_width,
-                               output + 1);
-  }
-};
-
-class BitpackDecoder : public Decoder {
- private:
-  const uint8_t* base_;
-  uint8_t* pointer_;
-  uint8_t bit_width_;
-  uint8_t index_;
-  sboost::Unpacker* unpacker_;
-  alignas(64) __m256i unpacked_;
-
-  void LoadNextGroup() {
-    unpacked_ = unpacker_->unpack(pointer_);
-    index_ = 0;
-    pointer_ += bit_width_;
-  }
-
- public:
-  void Attach(const uint8_t* buffer) override {
-    base_ = buffer;
-    bit_width_ = *buffer;
-    pointer_ = (uint8_t*)buffer + 1;
-    unpacker_ = sboost::unpackers[bit_width_];
+uint32_t BitpackDecoder::DecodeU32() {
+  auto entry = unpacked_[index_];
+  index_++;
+  if (index_ >= 8) {
     LoadNextGroup();
   }
-
-  void Skip(uint32_t offset) override {
-    index_ += offset;
-    auto group_index = index_ >> 3;
-    index_ &= 0x7;
-    if (group_index > 0) {
-      pointer_ += (group_index - 1) * bit_width_;
-      auto index_back = index_;
-      LoadNextGroup();
-      index_ = index_back;
-    }
-  }
-
-  uint32_t DecodeU32() override {
-    auto entry = (unpacked_[index_ / 2] >> (32 * (index_ & 1))) & (uint32_t)-1;
-    index_++;
-    if (index_ >= 8) {
-      LoadNextGroup();
-    }
-    return entry;
-  }
-};
+  return entry;
+}
 
 Encoding& EncodingFactory::Get(EncodingType encoding) {
   static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
@@ -497,194 +408,145 @@ Encoding& EncodingFactory::Get(EncodingType encoding) {
 }  // namespace u32
 
 namespace u8 {
-class PlainEncoder : public Encoder {
- private:
-  std::vector<uint8_t> buffer_;
+void PlainEncoder::Open() { buffer_.clear(); }
+void PlainEncoder::Encode(const uint8_t& value) { buffer_.push_back(value); }
+uint32_t PlainEncoder::EstimateSize() const { return buffer_.size(); }
+void PlainEncoder::Close() {}
+void PlainEncoder::Dump(uint8_t* output) {
+  memcpy(output, buffer_.data(), buffer_.size());
+}
 
- public:
-  void Open() { buffer_.clear(); }
-  void Encode(const uint8_t& value) override { buffer_.push_back(value); }
+void PlainDecoder::Attach(const uint8_t* buffer) {
+  raw_pointer_ = (uint8_t*)buffer;
+}
 
-  uint32_t EstimateSize() override { return buffer_.size(); }
+void PlainDecoder::Skip(uint32_t offset) { raw_pointer_ += offset; }
 
-  void Close() override {}
+uint8_t PlainDecoder::DecodeU8() { return *(raw_pointer_++); }
 
-  void Dump(uint8_t* output) override {
-    memcpy(output, buffer_.data(), buffer_.size());
-  }
-};
+void RleEncoder::writeEntry() {
+  buffer_.push_back((last_counter_ << 8) + last_value_);
+}
 
-class PlainDecoder : public Decoder {
- private:
-  uint8_t* raw_pointer_;
-
- public:
-  void Attach(const uint8_t* buffer) override {
-    raw_pointer_ = (uint8_t*)buffer;
-  }
-
-  void Skip(uint32_t offset) override { raw_pointer_ += offset; }
-
-  uint8_t DecodeU8() override { return *(raw_pointer_++); }
-};
-
-class RleEncoder : public Encoder {
- private:
-  std::vector<uint32_t> buffer_;
-  uint8_t last_value_ = 0xFF;
-  uint32_t last_counter_ = 0;
-
-  void writeEntry() { buffer_.push_back((last_counter_ << 8) + last_value_); }
-
- public:
-  void Open() override {
-    buffer_.clear();
-    last_value_ = 0xFF;
-    last_counter_ = 0;
-  }
-  void Encode(const uint8_t& entry) override {
-    if (entry == last_value_ && last_counter_ != 0) {
-      last_counter_++;
-    } else {
-      if (last_counter_ > 0) {
-        writeEntry();
-      }
-      last_value_ = entry;
-      last_counter_ = 1;
-    }
-  }
-
-  uint32_t EstimateSize() override {
-    return (buffer_.size() + (last_counter_ != 0)) * sizeof(uint32_t);
-  }
-
-  void Close() override {
+void RleEncoder::Open() {
+  buffer_.clear();
+  last_value_ = 0xFF;
+  last_counter_ = 0;
+}
+void RleEncoder::Encode(const uint8_t& entry) {
+  if (entry == last_value_ && last_counter_ != 0) {
+    last_counter_++;
+  } else {
     if (last_counter_ > 0) {
       writeEntry();
-      last_counter_ = 0;
     }
+    last_value_ = entry;
+    last_counter_ = 1;
   }
+}
 
-  void Dump(uint8_t* output) override {
-    memcpy(output, buffer_.data(), buffer_.size() * sizeof(uint32_t));
+uint32_t RleEncoder::EstimateSize() const {
+  return (buffer_.size() + (last_counter_ != 0)) * sizeof(uint32_t);
+}
+
+void RleEncoder::Close() {
+  if (last_counter_ > 0) {
+    writeEntry();
+    last_counter_ = 0;
   }
-};
+}
 
-class RleDecoder : public Decoder {
- private:
-  uint8_t value_;
-  uint32_t counter_ = 0;
-  uint32_t* pointer_;
+void RleEncoder::Dump(uint8_t* output) {
+  memcpy(output, buffer_.data(), buffer_.size() * sizeof(uint32_t));
+}
 
-  inline void readEntry() {
-    auto result = *(pointer_++);
-    value_ = result & 0xFF;
-    counter_ = result >> 8;
-  }
+void RleDecoder::Attach(const uint8_t* buffer) {
+  pointer_ = (uint32_t*)buffer;
+  readEntry();
+}
 
- public:
-  void Attach(const uint8_t* buffer) override {
-    pointer_ = (uint32_t*)buffer;
+void RleDecoder::Skip(uint32_t offset) {
+  auto remain = offset;
+  while (remain >= counter_) {
+    remain -= counter_;
     readEntry();
   }
+  counter_ -= remain;
+}
 
-  void Skip(uint32_t offset) override {
-    auto remain = offset;
-    while (remain >= counter_) {
-      remain -= counter_;
-      readEntry();
-    }
-    counter_ -= remain;
+uint8_t RleDecoder::DecodeU8() {
+  if (counter_ == 0) {
+    readEntry();
   }
+  auto result = value_;
+  counter_--;
+  return result;
+}
 
-  uint8_t DecodeU8() override {
-    if (counter_ == 0) {
-      readEntry();
-    }
-    auto result = value_;
-    counter_--;
-    return result;
-  }
-};
+void RleVarIntEncoder::writeEntry() {
+  buffer_.push_back(last_value_);
+  // Write var int
+  writeVar32(buffer_, last_counter_);
+}
 
-class RleVarIntEncoder : public Encoder {
- private:
-  std::vector<uint8_t> buffer_;
-  uint8_t last_value_ = 0xFF;
-  uint32_t last_counter_ = 0;
+void RleVarIntEncoder::Open() {
+  buffer_.clear();
+  last_value_ = 0xFF;
+  last_counter_ = 0;
+}
 
-  void writeEntry() {
-    buffer_.push_back(last_value_);
-    // Write var int
-    writeVar32(buffer_, last_counter_);
-  }
-
- public:
-  void Open() override {
-    buffer_.clear();
-    last_value_ = 0xFF;
-    last_counter_ = 0;
-  }
-
-  void Encode(const uint8_t& entry) override {
-    if (entry == last_value_ && last_counter_ != 0) {
-      last_counter_++;
-    } else {
-      if (last_counter_ > 0) {
-        writeEntry();
-      }
-      last_value_ = entry;
-      last_counter_ = 1;
-    }
-  }
-
-  uint32_t EstimateSize() override {
-    return buffer_.size() + (last_counter_ != 0) * 5;
-  }
-
-  void Close() override {
+void RleVarIntEncoder::Encode(const uint8_t& entry) {
+  if (entry == last_value_ && last_counter_ != 0) {
+    last_counter_++;
+  } else {
     if (last_counter_ > 0) {
       writeEntry();
-      last_counter_ = 0;
     }
+    last_value_ = entry;
+    last_counter_ = 1;
   }
+}
 
-  void Dump(uint8_t* output) override {
-    memcpy(output, buffer_.data(), buffer_.size());
+uint32_t RleVarIntEncoder::EstimateSize() const {
+  return buffer_.size() + (last_counter_ != 0) * 5;
+}
+
+void RleVarIntEncoder::Close() {
+  if (last_counter_ > 0) {
+    writeEntry();
+    last_counter_ = 0;
   }
-};
+}
 
-class RleVarIntDecoder : public Decoder {
- private:
-  uint8_t value_;
-  uint32_t counter_ = 0;
-  uint8_t* pointer_;
+void RleVarIntEncoder::Dump(uint8_t* output) {
+  memcpy(output, buffer_.data(), buffer_.size());
+}
 
-  void readEntry() {
-    value_ = *(pointer_++);
-    counter_ = readVar32(pointer_);
+void RleVarIntDecoder::readEntry() {
+  value_ = *(pointer_++);
+  counter_ = readVar32(pointer_);
+}
+
+void RleVarIntDecoder::Attach(const uint8_t* buffer) {
+  pointer_ = (uint8_t*)buffer;
+}
+
+void RleVarIntDecoder::Skip(uint32_t offset) {
+  auto remain = offset;
+  while (remain >= counter_) {
+    remain -= counter_;
+    readEntry();
   }
+  counter_ -= remain;
+}
 
- public:
-  void Attach(const uint8_t* buffer) override { pointer_ = (uint8_t*)buffer; }
-
-  void Skip(uint32_t offset) override {
-    auto remain = offset;
-    while (remain >= counter_) {
-      remain -= counter_;
-      readEntry();
-    }
-    counter_ -= remain;
+uint8_t RleVarIntDecoder::DecodeU8() {
+  if (counter_ == 0) {
+    readEntry();
   }
-
-  uint8_t DecodeU8() override {
-    if (counter_ == 0) {
-      readEntry();
-    }
-    counter_--;
-    return value_;
-  }
-};
+  counter_--;
+  return value_;
+}
 
 Encoding& EncodingFactory::Get(EncodingType encoding) {
   static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
