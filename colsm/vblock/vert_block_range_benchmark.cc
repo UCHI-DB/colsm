@@ -21,7 +21,7 @@ using namespace colsm;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-class BlockReadBenchmark : public benchmark::Fixture {
+class BlockRangeBenchmark : public benchmark::Fixture {
  protected:
   uint32_t num_entry_ = 2000000;
 
@@ -40,12 +40,13 @@ class BlockReadBenchmark : public benchmark::Fixture {
  public:
   // add members as needed
 
-  BlockReadBenchmark() {
+  BlockRangeBenchmark() {
     srand(time(nullptr));
     for (int i = 0; i < 10000; ++i) {
       target.push_back(rand() % 1000000);
     }
     comparator_ = intComparator();
+    num_entry_ = 1000000;
     {
       std::vector<int32_t> buffer;
       for (auto i = 0; i < num_entry_; ++i) {
@@ -92,37 +93,49 @@ class BlockReadBenchmark : public benchmark::Fixture {
     }
   }
 
-  virtual ~BlockReadBenchmark() {
+  virtual ~BlockRangeBenchmark() {
     delete block_;
     delete vblock_;
   }
 };
 
-BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State& state) {
+BENCHMARK_F(BlockRangeBenchmark, Normal)(benchmark::State& state) {
   for (auto _ : state) {
     //    for (int i = 0; i < 10; ++i) {
     char at[12];
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < 1000; ++i) {
       auto ite = block_->NewIterator(leveldb::BytewiseComparator());
       *((uint32_t*)at) = target[i];
       Slice t(at, 12);
       ite->Seek(t);
-      benchmark::DoNotOptimize(ite->key());
+      for (int j = 0; j < 100; ++j) {
+        benchmark::DoNotOptimize(ite->key());
+        if (!ite->Valid()) {
+          break;
+        }
+        ite->Next();
+      }
       delete ite;
     }
   }
 }
 
-BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State& state) {
+BENCHMARK_F(BlockRangeBenchmark, Vert)(benchmark::State& state) {
   for (auto _ : state) {
     char at[12];
-      for (int i = 0; i < 10000; ++i) {
-          auto ite = vblock_->NewIterator(NULL);
-          *((uint32_t *) at) = target[i];
-          Slice t(at, 12);
-          ite->Seek(t);
-          benchmark::DoNotOptimize(ite->key());
-          delete ite;
+    for (int i = 0; i < 1000; ++i) {
+      auto ite = vblock_->NewIterator(NULL);
+      *((uint32_t*)at) = target[i];
+      Slice t(at, 12);
+      ite->Seek(t);
+      for (int j = 0; j < 100; ++j) {
+        benchmark::DoNotOptimize(ite->key());
+        if (!ite->Valid()) {
+          break;
+        }
+        ite->Next();
       }
+      delete ite;
+    }
   }
 }
