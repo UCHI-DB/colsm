@@ -300,15 +300,93 @@ uint64_t DeltaDecoder::DecodeU64() {
   return base_;
 }
 
+void BitpackEncoder::Open() {
+  buffer_.clear();
+  min_ = INT64_MAX;
+  max_ = 0;
+}
+
+void BitpackEncoder::Encode(const uint64_t& value) {
+  buffer_.push_back(value);
+  min_ = std::min(min_, value);
+  max_ = std::max(max_, value);
+}
+
+uint32_t BitpackEncoder::EstimateSize() const {
+  uint8_t bit_width = 64 - _lzcnt_u64(max_ - min_);
+  // The buffer should be large enough for a 256 bit read after valid data
+  uint32_t buffer_group_size = (buffer_.size() + 7) >> 3;
+  uint32_t size = 1 + bit_width * buffer_group_size + 32;
+  return size;
+}
+
+void BitpackEncoder::Close() {}
+
+void BitpackEncoder::Dump(uint8_t* output) {
+  uint8_t bit_width = 64 - _lzcnt_u64(max_ - min_);
+  *((uint64_t*)output) = min_;
+  *(output + 8) = bit_width;
+  assert(bit_width < 32);
+
+  std::vector<uint32_t> another;
+  another.reserve(buffer_.size());
+  for (auto& i : buffer_) {
+    another.push_back(i - min_);
+  }
+  sboost::byteutils::bitpack(another.data(), buffer_.size(), bit_width,
+                             output + 9);
+}
+
+void BitpackDecoder::LoadNextGroup() {
+  auto up = unpacker_->unpack(pointer_);
+  memcpy(unpacked_, (uint8_t*)&up, 32);
+  index_ = 0;
+  pointer_ += bit_width_;
+}
+
+void BitpackDecoder::Attach(const uint8_t* buffer) {
+  base_ = buffer;
+  min_ = *((uint64_t*)buffer);
+  bit_width_ = *(buffer + 8);
+  pointer_ = (uint8_t*)buffer + 9;
+  assert(bit_width_ < 32);
+  unpacker_ = sboost::unpackers[bit_width_];
+  LoadNextGroup();
+}
+
+void BitpackDecoder::Skip(uint32_t offset) {
+  index_ += offset;
+  auto group_index = index_ >> 3;
+  index_ &= 0x7;
+  if (group_index > 0) {
+    pointer_ += (group_index - 1) * bit_width_;
+    auto index_back = index_;
+    LoadNextGroup();
+    index_ = index_back;
+  }
+}
+
+uint64_t BitpackDecoder::DecodeU64() {
+  auto entry = unpacked_[index_];
+  index_++;
+  if (index_ >= 8) {
+    LoadNextGroup();
+  }
+  return entry + min_;
+}
+
 Encoding& EncodingFactory::Get(EncodingType encoding) {
   static EncodingTemplate<PlainEncoder, PlainDecoder> plainEncoding;
   static EncodingTemplate<DeltaEncoder, DeltaDecoder> deltaEncoding;
+  static EncodingTemplate<BitpackEncoder, BitpackDecoder> bitpackEncoding;
 
   switch (encoding) {
     case PLAIN:
       return plainEncoding;
     case DELTA:
       return deltaEncoding;
+    case BITPACK:
+      return bitpackEncoding;
     default:
       return plainEncoding;
   }

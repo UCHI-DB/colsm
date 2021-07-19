@@ -13,7 +13,7 @@ using namespace colsm;
 using namespace colsm::encoding;
 
 TEST(StrPlain, EncDec) {
-  Encoding& plainEncoding = string::EncodingFactory::Get(PLAIN);
+  Encoding& plainEncoding = encoding::string::EncodingFactory::Get(PLAIN);
   auto encoder = plainEncoding.encoder();
   auto decoder = plainEncoding.decoder();
 
@@ -66,7 +66,8 @@ TEST(StrPlain, EncDec) {
 }
 
 TEST(StrLength, EncDec) {
-  Encoding& plainEncoding = string::EncodingFactory::Get(LENGTH);
+  Encoding& plainEncoding =
+      colsm::encoding::string::EncodingFactory::Get(LENGTH);
   auto encoder = plainEncoding.encoder();
   auto decoder = plainEncoding.decoder();
 
@@ -160,18 +161,18 @@ TEST(U64Plain, EncDec) {
 }
 
 uint8_t Var32Size(uint32_t value) {
-  if(value == 0) {
+  if (value == 0) {
     return 1;
   }
-  auto bits = 32-_lzcnt_u32(value);
+  auto bits = 32 - _lzcnt_u32(value);
   return (bits + 6) / 7;
 }
 
 uint8_t Var64Size(uint64_t value) {
-  if(value == 0) {
+  if (value == 0) {
     return 1;
   }
-  auto bits = 64-_lzcnt_u64(value);
+  auto bits = 64 - _lzcnt_u64(value);
   return (bits + 6) / 7;
 }
 
@@ -206,7 +207,8 @@ TEST(U64Delta, EncDec) {
     }
 
     encoder->Encode((uint64_t)value);
-    ASSERT_EQ(size+((rle_counter!=0)?12:0), encoder->EstimateSize()) << i;
+    ASSERT_EQ(size + ((rle_counter != 0) ? 12 : 0), encoder->EstimateSize())
+        << i;
 
     prev = value;
   }
@@ -237,9 +239,57 @@ TEST(U64Delta, EncDec) {
       decoder2->Skip(skip);
       auto result = decoder2->DecodeU64();
       uint64_t value = current;
-      if(value %15 == 0) {
+      if (value % 15 == 0) {
         value *= 100;
       }
+      ASSERT_EQ(value, result);
+      current++;
+    }
+  }
+
+  delete[] buffer;
+}
+
+TEST(U64Bitpack, EncDec) {
+  Encoding& plainEncoding = u64::EncodingFactory::Get(BITPACK);
+  auto encoder = plainEncoding.encoder();
+  auto decoder = plainEncoding.decoder();
+
+  uint32_t size = 0;
+  for (int i = 0; i < 10000; ++i) {
+    uint64_t value = i;
+    encoder->Encode((uint64_t)value);
+
+    auto bitwidth = 64 - _lzcnt_u64(i);
+    uint32_t buffer_group_size = (i + 1 + 7) >> 3;
+    uint32_t expect_size = 1 + bitwidth * buffer_group_size + 32;
+    ASSERT_EQ(expect_size, encoder->EstimateSize());
+  }
+  encoder->Close();
+  size = encoder->EstimateSize();
+  uint8_t* buffer = new uint8_t[size];
+  memset(buffer,0,size);
+  encoder->Dump(buffer);
+
+  decoder->Attach(buffer);
+  for (int i = 0; i < 10000; ++i) {
+    uint64_t expect = i;
+    auto decoded = decoder->DecodeU64();
+    ASSERT_EQ(expect, decoded) << i;
+  }
+
+  srand(time(0));
+
+  int current = 0;
+  auto decoder2 = plainEncoding.decoder();
+  decoder2->Attach(buffer);
+  while (current < 10000) {
+    uint32_t skip = rand() % 100;
+    current += skip;
+    if (current < 10000) {
+      decoder2->Skip(skip);
+      auto result = decoder2->DecodeU64();
+      uint64_t value = current;
       ASSERT_EQ(value, result);
       current++;
     }

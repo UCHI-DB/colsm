@@ -174,8 +174,8 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
 
     case kSnappyCompression: {
       std::string* compressed = &r->compressed_output;
-      if (port::Snappy_Compress(raw.data(), raw.size(), compressed) &&
-          compressed->size() < raw.size() - (raw.size() / 8u)) {
+      if (port::Snappy_Compress(raw.data(), raw.size(), compressed) /*&&
+          compressed->size() < raw.size() - (raw.size() / 8u)*/) {
         block_contents = *compressed;
       } else {
         // Snappy not supported, or compressed less than 12.5%, so just

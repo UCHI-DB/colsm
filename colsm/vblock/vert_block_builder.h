@@ -57,7 +57,8 @@ class VertSectionBuilder {
   EncodingType value_enc_type_;
 
   u32::BitpackEncoder key_encoder_;
-  u64::PlainEncoder seq_encoder_;
+  u64::BitpackEncoder seq_encoder_;
+//  u64::PlainEncoder seq_encoder_;
   u8::RleEncoder type_encoder_;
   std::unique_ptr<Encoder> value_encoder_;
 

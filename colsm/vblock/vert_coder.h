@@ -189,10 +189,15 @@ class DeltaDecoder : public Decoder {
   uint64_t DecodeU64() override;
 };
 
+/**
+ * A temporary encoder that assume the u64
+ * in the input can be put in a 32 bit
+ */
 class BitpackEncoder : public Encoder {
  private:
   std::vector<uint64_t> buffer_;
-
+  uint64_t min_ = INT64_MAX;
+  uint64_t max_ = 0;
  public:
   void Open() override;
   void Encode(const uint64_t& value) override;
@@ -207,6 +212,7 @@ class BitpackDecoder : public Decoder {
   uint8_t* pointer_;
   uint8_t bit_width_;
   uint8_t index_;
+  uint64_t min_;
   sboost::Unpacker* unpacker_;
   uint32_t unpacked_[8];
 
@@ -215,7 +221,7 @@ class BitpackDecoder : public Decoder {
  public:
   void Attach(const uint8_t* buffer) override;
   void Skip(uint32_t offset) override;
-  uint32_t DecodeU32() override;
+  uint64_t DecodeU64() override;
 };
 
 class EncodingFactory {
