@@ -22,12 +22,13 @@ using namespace colsm;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-BlockContents prepareBlock(std::vector<int>& keys, int value_len) {
+int value_len = 256;
+uint32_t batch_size = 30000;
+BlockContents prepareBlock(std::vector<int>& keys) {
   uint32_t num_entry = keys.size();
-  uint32_t intkey;
   char key_buffer[12];
   char value_buffer[value_len];
-  Slice key((const char*)&intkey, 4);
+  Slice key((const char*)key_buffer, 12);
   Slice value(value_buffer, value_len);
 
   Options option;
@@ -35,7 +36,7 @@ BlockContents prepareBlock(std::vector<int>& keys, int value_len) {
   BlockBuilder builder((const Options*)&option);
 
   for (auto i = 0; i < num_entry; ++i) {
-    intkey = keys[i];
+      *((uint32_t*)key_buffer) = keys[i];
     builder.Add(key, value);
   }
   auto result = builder.Finish();
@@ -45,13 +46,13 @@ BlockContents prepareBlock(std::vector<int>& keys, int value_len) {
   return BlockContents{heap, true, false};
 }
 
-BlockContents prepareVBlock(std::vector<int>& keys, int value_len,
+BlockContents prepareVBlock(std::vector<int>& keys,
                             EncodingType encoding) {
   auto comparator = colsm::intComparator();
   uint32_t num_entry = keys.size();
-  uint32_t intkey;
+  char key_buffer[12];
   char value_buffer[value_len];
-  Slice key((const char*)&intkey, 4);
+  Slice key((const char*)&key_buffer, 12);
   Slice value(value_buffer, value_len);
 
   Options option;
@@ -59,7 +60,7 @@ BlockContents prepareVBlock(std::vector<int>& keys, int value_len,
   VertBlockBuilder builder((const Options*)&option,encoding);
 
   for (auto i = 0; i < num_entry; ++i) {
-    intkey = keys[i];
+      *((uint32_t*)key_buffer)= keys[i];
     builder.Add(key, value);
   }
   auto result = builder.Finish();
@@ -72,7 +73,7 @@ BlockContents prepareVBlock(std::vector<int>& keys, int value_len,
 void BlockMergeWithNoOverlap(benchmark::State& state) {
   vector<int32_t> key1;
   vector<int32_t> key2;
-  for (int i = 0; i < 1000000; ++i) {
+  for (int i = 0; i < batch_size; ++i) {
     //        key1.push_back(i);
     //        key2.push_back(i+1000000);
     key1.push_back(i * 2);
@@ -80,8 +81,8 @@ void BlockMergeWithNoOverlap(benchmark::State& state) {
   }
   sort(key1.begin(), key1.end(), binary_sorter);
   sort(key2.begin(), key2.end(), binary_sorter);
-  auto content1 = prepareBlock(key1, 64);
-  auto content2 = prepareBlock(key2, 64);
+  auto content1 = prepareBlock(key1);
+  auto content2 = prepareBlock(key2);
 
   for (auto _ : state) {
     Block block1(content1);
@@ -114,13 +115,13 @@ void VBlockMergeWithNoOverlap(benchmark::State& state) {
   vector<int32_t> key1;
   vector<int32_t> key2;
   auto comparator = colsm::intComparator();
-  for (int i = 0; i < 1000000; ++i) {
+  for (int i = 0; i < batch_size; ++i) {
     key1.push_back(i * 2);
     key2.push_back(i * 2 + 1);
   }
 
-  auto content1 = prepareVBlock(key1, 64, EncodingType::LENGTH);
-  auto content2 = prepareVBlock(key2, 64, EncodingType::LENGTH);
+  auto content1 = prepareVBlock(key1, EncodingType::LENGTH);
+  auto content2 = prepareVBlock(key2, EncodingType::LENGTH);
 
   for (auto _ : state) {
     VertBlockCore block1(content1);
@@ -147,4 +148,4 @@ void VBlockMergeWithNoOverlap(benchmark::State& state) {
 }
 
 BENCHMARK(BlockMergeWithNoOverlap);
-//BENCHMARK(VBlockMergeWithNoOverlap);
+BENCHMARK(VBlockMergeWithNoOverlap);
