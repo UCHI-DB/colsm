@@ -189,6 +189,35 @@ class DeltaDecoder : public Decoder {
   uint64_t DecodeU64() override;
 };
 
+class BitpackEncoder : public Encoder {
+ private:
+  std::vector<uint64_t> buffer_;
+
+ public:
+  void Open() override;
+  void Encode(const uint64_t& value) override;
+  uint32_t EstimateSize() const override;
+  void Close() override;
+  void Dump(uint8_t* output) override;
+};
+
+class BitpackDecoder : public Decoder {
+ private:
+  const uint8_t* base_;
+  uint8_t* pointer_;
+  uint8_t bit_width_;
+  uint8_t index_;
+  sboost::Unpacker* unpacker_;
+  uint32_t unpacked_[8];
+
+  void LoadNextGroup();
+
+ public:
+  void Attach(const uint8_t* buffer) override;
+  void Skip(uint32_t offset) override;
+  uint32_t DecodeU32() override;
+};
+
 class EncodingFactory {
  public:
   static Encoding& Get(EncodingType);

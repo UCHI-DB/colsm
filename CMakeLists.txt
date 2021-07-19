@@ -332,6 +332,10 @@ add_executable(block_runner colsm/vblock/block_runner.cc)
 target_link_libraries(block_runner PRIVATE leveldb)
 target_compile_options(block_runner PUBLIC ${SBOOST_SIMD_FLAGS})
 
+add_executable(table_runner colsm/vblock/table_runner.cc)
+target_link_libraries(table_runner PRIVATE leveldb)
+target_compile_options(table_runner PUBLIC ${SBOOST_SIMD_FLAGS})
+
 add_executable(colsm_table_printer colsm/tool/table_printer.cc)
 target_link_libraries(colsm_table_printer PRIVATE leveldb)
 target_compile_options(colsm_table_printer PUBLIC ${SBOOST_SIMD_FLAGS})
@@ -458,6 +462,7 @@ if(LEVELDB_BUILD_BENCHMARKS)
   colsm_benchmark(respool_benchmark colsm/respool/respool_benchmark.cc)
   colsm_benchmark(vert_block_read_benchmark colsm/vblock/vert_block_read_benchmark.cc)
   colsm_benchmark(vert_block_merge_benchmark colsm/vblock/vert_block_merge_benchmark.cc)
+  colsm_benchmark(vert_block_range_benchmark colsm/vblock/vert_block_range_benchmark.cc)
   colsm_benchmark(vert_coder_benchmark colsm/vblock/vert_coder_benchmark.cc)
   colsm_benchmark(comparators_benchmark colsm/comparators_benchmark.cc)
 
