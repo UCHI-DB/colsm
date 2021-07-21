@@ -17,14 +17,19 @@ struct Parameter {
   std::vector<int> t;       // Compaction ratio
   std::vector<double> fpr;  // False positive rate
 
-  double pv;  // Block Point lookup for Vertical
-  double ph;  // Block Point lookup for Horizontal
+  // p(x) parameters
+  double v_epsilon;
+    double v_eta;
+  double h_epsilon;
+  double h_eta;
 
   double rv;  // Range Lookup for Vertical
   double rh;  // Range Lookup for Horizontal
 
-  double uv;  // Update for Vertical
-  double uh;  // Update for Horizontal
+  double v_mu;  // Update for Vertical
+  double v_xi;
+  double h_mu;  // Update for Horizontal
+  double h_xi;
 
   std::vector<bool> level_results;
 };

@@ -3,70 +3,82 @@
 //
 
 #include "solver.h"
+#include <math.h>
 
 #include <ilcplex/ilocplex.h>
 
 namespace colsm {
 
-using namespace std;
+    using namespace std;
 
-void CPlexSolver::Solve(Parameter& parameter, Workload& workload) {
-  SolveLevelDB(parameter, workload);
-}
+    void CPlexSolver::Solve(Parameter &parameter, Workload &workload) {
+        SolveLevelDB(parameter, workload);
+    }
 
-void CPlexSolver::SolveLevelDB(Parameter& param, Workload& workload) {
-  IloEnv env;
-  IloModel model(env);
+    void CPlexSolver::SolveLevelDB(Parameter &param, Workload &workload) {
+        IloEnv env;
+        IloModel model(env);
 
-  IloNumVarArray var(env);
+        IloNumVarArray var(env);
 
-  // Define variables
-  for (auto i = 0; i < param.l; ++i) {
-    var.add(IloNumVar(env, 0, 1, ILOINT));
-  }
+        // Define variables
+        for (auto i = 0; i < param.l; ++i) {
+            var.add(IloNumVar(env, 0, 1, ILOINT));
+        }
 
-  // P = \sum T p P
-  // R = P + R
-  // U = \sum D/B
-  // result = alpha P + beta R + gamma U
-  auto p = param.t[0] * param.fpr[0] *
-           (var[0] * param.pv + (1 - var[0]) * param.ph) * param.b[0];
-  auto r = (var[0] * param.pv + (1 - var[0]) * param.ph) * param.b[0] +
-           (var[0] * param.rv + (1 - var[0]) * param.rh);
-  auto u = (var[0] * param.uv + (1 - var[0]) * param.uh) / param.b[0];
+        // sum 0.1 p(B_i)
+        //
 
-  for (int i = 1; i < param.l; ++i) {
-    p = p + param.t[i] * param.fpr[i] *
-                (var[i] * param.pv + (1 - var[i]) * param.ph) * param.b[i];
-    r = r + (var[i] * param.pv + (1 - var[i]) * param.ph) * param.b[i] +
-        (var[i] * param.rv + (1 - var[i]) * param.rh);
-    u = u + (var[i] * param.uv + (1 - var[i]) * param.uh) / param.b[i];
-  }
+        // P = \sum T p P
+        // R = P + R
+        // U = \sum D/B
+        // result = alpha P + beta R + gamma U
+        auto p = param.t[0] * param.fpr[0] * (
+                (var[0] * param.v_epsilon + (1 - var[0]) * param.h_epsilon) * std::log(param.b[0])
+                + var[0] * param.v_eta + (1 - var[0]) * param.h_eta);
+        auto r = param.t[0] * (param.fpr[0] * (
+                (var[0] * param.v_epsilon + (1 - var[0]) * param.h_epsilon) * std::log(param.b[0])
+                + var[0] * param.v_eta + (1 - var[0]) * param.h_eta)
+                               + var[0] * param.rv + (1 - var[0]) * param.rh);
+        auto u = (var[0] * param.v_mu + (1 - var[0]) * param.h_mu) +
+                 (var[0] * param.v_xi + (1 - var[0]) * param.h_xi) / param.b[0];
 
-  auto result = workload.alpha * p + workload.beta * r + workload.gamma * u;
+        for (int i = 1; i < param.l; ++i) {
+            p = p + param.t[i] * param.fpr[i] * (
+                    (var[i] * param.v_epsilon + (1 - var[i]) * param.h_epsilon) * std::log(param.b[i])
+                    + var[i] * param.v_eta + (1 - var[i]) * param.h_eta);
+            r = r + param.t[i] * (param.fpr[i] * (
+                    (var[i] * param.v_epsilon + (1 - var[i]) * param.h_epsilon) * std::log(param.b[i])
+                    + var[i] * param.v_eta + (1 - var[i]) * param.h_eta)
+                                  + var[i] * param.rv + (1 - var[i]) * param.rh);
+            u = u + (var[i] * param.v_mu + (1 - var[i]) * param.h_mu) +
+                    (var[i] * param.v_xi + (1 - var[i]) * param.h_xi) / param.b[i];
+        }
 
-  model.add(IloMinimize(env, result));
+        auto result = workload.alpha * p + workload.beta * r + workload.gamma * u;
 
-  IloCplex cplex(model);
+        model.add(IloMinimize(env, result));
 
-  cplex.solve();
+        IloCplex cplex(model);
 
-  env.out() << "Solution status = " << cplex.getStatus() << endl;
-  env.out() << "Solution value  = " << cplex.getObjValue() << endl;
+        cplex.solve();
 
-  IloNumArray vals(env);
-  cplex.getValues(vals, var);
-  env.out() << "Values        = " << vals << endl;
+        env.out() << "Solution status = " << cplex.getStatus() << endl;
+        env.out() << "Solution value  = " << cplex.getObjValue() << endl;
 
-  auto intArray = vals.toIntArray();
-  param.level_results.clear();
-  for (int i = 0; i < param.l; ++i) {
-    param.level_results.push_back(intArray[i] != 0);
-  }
+        IloNumArray vals(env);
+        cplex.getValues(vals, var);
+        env.out() << "Values        = " << vals << endl;
 
-  env.end();
+        auto intArray = vals.toIntArray();
+        param.level_results.clear();
+        for (int i = 0; i < param.l; ++i) {
+            param.level_results.push_back(intArray[i] != 0);
+        }
 
-  return;
-}
+        env.end();
+
+        return;
+    }
 
 }  // namespace colsm
