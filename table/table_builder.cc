@@ -185,6 +185,9 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
       }
       break;
     }
+    case kZlibCompression: {
+
+    }
   }
   WriteRawBlock(block_contents, type, handle);
   r->compressed_output.clear();

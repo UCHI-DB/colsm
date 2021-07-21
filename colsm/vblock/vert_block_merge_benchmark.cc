@@ -22,8 +22,8 @@ using namespace colsm;
 
 bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 
-int value_len = 256;
-uint32_t batch_size = 30000;
+int value_len = 128;
+uint32_t batch_size = 240000;
 BlockContents prepareBlock(std::vector<int>& keys) {
   uint32_t num_entry = keys.size();
   char key_buffer[12];

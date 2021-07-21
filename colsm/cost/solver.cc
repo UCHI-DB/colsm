@@ -63,12 +63,12 @@ namespace colsm {
 
         cplex.solve();
 
-        env.out() << "Solution status = " << cplex.getStatus() << endl;
-        env.out() << "Solution value  = " << cplex.getObjValue() << endl;
+//        env.out() << "Solution status = " << cplex.getStatus() << endl;
+//        env.out() << "Solution value  = " << cplex.getObjValue() << endl;
 
         IloNumArray vals(env);
         cplex.getValues(vals, var);
-        env.out() << "Values        = " << vals << endl;
+//        env.out() << "Values        = " << vals << endl;
 
         auto intArray = vals.toIntArray();
         param.level_results.clear();
