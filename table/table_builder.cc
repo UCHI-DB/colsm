@@ -18,6 +18,8 @@
 #include "util/coding.h"
 #include "util/crc32c.h"
 
+#include "zlib.h"
+
 #include "colsm/vblock/vert_block_builder.h"
 
 using namespace colsm;
