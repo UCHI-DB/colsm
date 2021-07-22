@@ -16,8 +16,7 @@ namespace colsm {
 using namespace leveldb;
 BlockContents compressBlock(CompressionType, Slice& input);
 
-void decompress(CompressionType, char* input, size_t input_size,
-                std::string* output);
+BlockContents decompress(CompressionType, BlockContents);
 
 /**
  * This class wraps a BlockContents, and decompress the data every time it is
@@ -26,12 +25,13 @@ void decompress(CompressionType, char* input, size_t input_size,
 class CompressBlockCore : public BlockCore {
  private:
   CompressionType ctype_;
+  BlockContents content_;
   std::unique_ptr<BlockCore> inner_;
 
  public:
   CompressBlockCore(CompressionType, BlockContents);
 
-  virtual ~CompressBlockCore() = default;
+  virtual ~CompressBlockCore();
 
   size_t size() const override;
 

@@ -28,6 +28,8 @@ class BlockReadBenchmark : public benchmark::Fixture {
   CompressionType ctype = kNoCompression;
   Block* block_;
   VertBlockCore* vblock_;
+  CompressBlockCore* cblock_;
+  CompressBlockCore* cvblock_;
 
   unique_ptr<Comparator> comparator_;
 
@@ -68,12 +70,14 @@ class BlockReadBenchmark : public benchmark::Fixture {
       }
       auto result = builder.Finish();
 
-      //      char* copied = new char[result.size()];
-      //      memcpy(copied, result.data(), result.size());
-      //      Slice heap(copied, result.size());
-      //      BlockContents content{heap, true, true};
-      auto content = compressBlock(ctype, result);
+      char* copied = new char[result.size()];
+      memcpy(copied, result.data(), result.size());
+      Slice heap(copied, result.size());
+      BlockContents content{heap, true, true};
       block_ = new Block(content);
+
+      BlockContents compressed = compressBlock(ctype, result);
+      cblock_ = new CompressBlockCore(ctype, compressed);
     }
     {
       Options options;
@@ -89,18 +93,22 @@ class BlockReadBenchmark : public benchmark::Fixture {
       }
 
       auto result = builder.Finish();
-//      char* copied = new char[result.size()];
-//      memcpy(copied, result.data(), result.size());
-//      Slice heap(copied, result.size());
-//      BlockContents content{heap, true, true};
-      auto content = compressBlock(ctype,result);
+      char* copied = new char[result.size()];
+      memcpy(copied, result.data(), result.size());
+      Slice heap(copied, result.size());
+      BlockContents content{heap, true, true};
       vblock_ = new VertBlockCore(content);
+
+      BlockContents compressed = compressBlock(ctype, result);
+      cvblock_ = new CompressBlockCore(ctype, compressed);
     }
   }
 
   virtual ~BlockReadBenchmark() {
     delete block_;
     delete vblock_;
+    delete cblock_;
+    delete cvblock_;
   }
 };
 
