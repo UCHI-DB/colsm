@@ -188,7 +188,16 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
       break;
     }
     case kZlibCompression: {
-
+        std::string* compressed= &r->compressed_output;
+        if (port::Zlib_Compress(raw.data(), raw.size(), compressed)) {
+            block_contents = *compressed;
+        } else {
+            // Snappy not supported, or compressed less than 12.5%, so just
+            // store uncompressed form
+            block_contents = raw;
+            type = kNoCompression;
+        }
+        break;
     }
   }
   WriteRawBlock(block_contents, type, handle);

@@ -130,15 +130,13 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
       result->cachable = true;
       break;
     }
-    // TODO Implement ZlibCompression
+    // Implement ZlibCompression
     case kZlibCompression: {
-      size_t ulength = 0;
-      if (!port::Snappy_GetUncompressedLength(data, n, &ulength)) {
-        delete[] buf;
-        return Status::Corruption("corrupted compressed block contents");
-      }
-      char* ubuf = new char[ulength];
-      if (!port::Snappy_Uncompress(data, n, ubuf)) {
+        // We do not know how to estimate the size, simply choose double
+      size_t umax_length = n*2;
+      char* ubuf = new char[umax_length];
+      size_t ulength;
+      if (!port::Zlib_Uncompress(data, n, ubuf,&ulength)) {
         delete[] buf;
         delete[] ubuf;
         return Status::Corruption("corrupted compressed block contents");

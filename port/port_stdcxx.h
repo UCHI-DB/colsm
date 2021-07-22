@@ -134,29 +134,31 @@ inline bool Snappy_Uncompress(const char* input, size_t length, char* output) {
 #if HAVE_ZLIB
         output->resize(compressBound(length));
         size_t outlen;
-        compress2(input, length, &(*output)[0], &outlen,9);
+        if(0<compress2(input, length, &(*output)[0], &outlen,9)) {
         output->resize(outlen);
         return true;
+        } else {
+            return false;
+        }
 #else
         // Silence compiler warnings about unused arguments.
   (void)input;
   (void)length;
   (void)output;
-#endif  // HAVE_SNAPPY
+#endif  // HAVE_ZLIB
         return false;
     }
 
     inline bool Zlib_Uncompress(const char* input, size_t length, char* output, size_t* output_length) {
 #if HAVE_ZLIB
-         uncompress(output, output_length, input, length);
-    return true;
+         return 0<uncompress(output, output_length, input, length);
 #else
         // Silence compiler warnings about unused arguments.
   (void)input;
   (void)length;
   (void)output;
   return false;
-#endif  // HAVE_SNAPPY
+#endif  // HAVE_ZLIB
     }
 
 inline bool GetHeapProfile(void (*func)(void*, const char*, int), void* arg) {
