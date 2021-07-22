@@ -202,6 +202,7 @@ target_sources(leveldb
     "colsm/vblock/vert_helper.h"
     "colsm/vblock/sortmerge_iterator.cc"
     "colsm/vblock/sortmerge_iterator.h"
+    "colsm/vblock/micro_helper.cc"
     "colsm/comparators.cc"
     "util/arena.cc"
     "util/arena.h"
