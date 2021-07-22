@@ -12,6 +12,7 @@
 #include "table/format.h"
 
 #include "colsm/comparators.h"
+#include "micro_helper.h"
 #include "vert_block.h"
 #include "vert_block_builder.h"
 
@@ -24,7 +25,7 @@ bool binary_sorter(int a, int b) { return memcmp(&a, &b, 4) < 0; }
 class BlockReadBenchmark : public benchmark::Fixture {
  protected:
   uint32_t num_entry_ = 2000000;
-
+  CompressionType ctype = kNoCompression;
   Block* block_;
   VertBlockCore* vblock_;
 
@@ -43,7 +44,7 @@ class BlockReadBenchmark : public benchmark::Fixture {
   BlockReadBenchmark() {
     srand(time(nullptr));
     for (int i = 0; i < 10000; ++i) {
-      target.push_back(rand() % 1000000);
+      target.push_back(rand() % num_entry_);
     }
     comparator_ = intComparator();
     {
@@ -55,6 +56,7 @@ class BlockReadBenchmark : public benchmark::Fixture {
 
       Options option;
       option.comparator = leveldb::BytewiseComparator();
+      option.compression = ctype;
       BlockBuilder builder((const Options*)&option);
 
       for (auto i = 0; i < num_entry_; ++i) {
@@ -65,15 +67,18 @@ class BlockReadBenchmark : public benchmark::Fixture {
         builder.Add(key, value);
       }
       auto result = builder.Finish();
-      char* copied = new char[result.size()];
-      memcpy(copied, result.data(), result.size());
-      Slice heap(copied, result.size());
-      BlockContents content{heap, true, true};
+
+      //      char* copied = new char[result.size()];
+      //      memcpy(copied, result.data(), result.size());
+      //      Slice heap(copied, result.size());
+      //      BlockContents content{heap, true, true};
+      auto content = compressBlock(ctype, result);
       block_ = new Block(content);
     }
     {
       Options options;
-      VertBlockBuilder builder(&options,LENGTH);
+      options.compression = ctype;
+      VertBlockBuilder builder(&options, LENGTH);
 
       for (uint32_t i = 0; i < num_entry_; ++i) {
         *((uint32_t*)kbuffer_) = i;
@@ -84,10 +89,11 @@ class BlockReadBenchmark : public benchmark::Fixture {
       }
 
       auto result = builder.Finish();
-      char* copied = new char[result.size()];
-      memcpy(copied, result.data(), result.size());
-      Slice heap(copied, result.size());
-      BlockContents content{heap, true, true};
+//      char* copied = new char[result.size()];
+//      memcpy(copied, result.data(), result.size());
+//      Slice heap(copied, result.size());
+//      BlockContents content{heap, true, true};
+      auto content = compressBlock(ctype,result);
       vblock_ = new VertBlockCore(content);
     }
   }
@@ -116,13 +122,13 @@ BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State& state) {
 BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State& state) {
   for (auto _ : state) {
     char at[12];
-      for (int i = 0; i < 10000; ++i) {
-          auto ite = vblock_->NewIterator(NULL);
-          *((uint32_t *) at) = target[i];
-          Slice t(at, 12);
-          ite->Seek(t);
-          benchmark::DoNotOptimize(ite->key());
-          delete ite;
-      }
+    for (int i = 0; i < 10000; ++i) {
+      auto ite = vblock_->NewIterator(NULL);
+      *((uint32_t*)at) = target[i];
+      Slice t(at, 12);
+      ite->Seek(t);
+      benchmark::DoNotOptimize(ite->key());
+      delete ite;
+    }
   }
 }

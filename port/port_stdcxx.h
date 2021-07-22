@@ -129,37 +129,41 @@ inline bool Snappy_Uncompress(const char* input, size_t length, char* output) {
 #endif  // HAVE_SNAPPY
 }
 
-    inline bool Zlib_Compress(const char* input, size_t length,
-                                std::string* output) {
+inline bool Zlib_Compress(const char* input, size_t length,
+                          std::string* output) {
 #if HAVE_ZLIB
-        output->resize(compressBound(length));
-        size_t outlen;
-        if(0<compress2(input, length, &(*output)[0], &outlen,9)) {
-        output->resize(outlen);
-        return true;
-        } else {
-            return false;
-        }
+  output->resize(compressBound(length));
+  size_t outlen;
+  auto result = compress2((u_char*)output->data(), &outlen,
+                          (const u_char*)input, length, 9);
+  if (result == 0) {
+    output->resize(outlen);
+    return true;
+  } else {
+    return false;
+  }
 #else
-        // Silence compiler warnings about unused arguments.
+  // Silence compiler warnings about unused arguments.
   (void)input;
   (void)length;
   (void)output;
 #endif  // HAVE_ZLIB
-        return false;
-    }
+  return false;
+}
 
-    inline bool Zlib_Uncompress(const char* input, size_t length, char* output, size_t* output_length) {
+inline bool Zlib_Uncompress(const char* input, size_t length, char* output,
+                            size_t* output_length) {
 #if HAVE_ZLIB
-         return 0<uncompress(output, output_length, input, length);
+  return 0 == uncompress((u_char*)output, output_length, (const u_char*)input,
+                        length);
 #else
-        // Silence compiler warnings about unused arguments.
+  // Silence compiler warnings about unused arguments.
   (void)input;
   (void)length;
   (void)output;
   return false;
 #endif  // HAVE_ZLIB
-    }
+}
 
 inline bool GetHeapProfile(void (*func)(void*, const char*, int), void* arg) {
   // Silence compiler warnings about unused arguments.

@@ -13,7 +13,9 @@
 
 using namespace leveldb;
 
-uint64_t num_entry = 4000000;
+uint64_t num_entry = 1000000;
+CompressionType compressionType = kNoCompression;
+
 bool binary_sorter(uint64_t a, uint64_t b) { return memcmp(&a, &b, 8) < 0; }
 
 void rand_string(char* buffer, int length) {
@@ -29,7 +31,7 @@ void build_vest() {
   env->NewWritableFile("/tmp/vesttable", &file);
   Options options;
   options.comparator = intComparator.get();
-  options.compression = kSnappyCompression;
+  options.compression = compressionType;
   TableBuilder builder(options, true, file);
 
   srand(time(NULL));
@@ -55,7 +57,7 @@ void build_sstable() {
   WritableFile* file;
   env->NewWritableFile("/tmp/sstable", &file);
   Options options;
-  options.compression = kSnappyCompression;
+  options.compression = compressionType;
   TableBuilder builder(options, false, file);
 
   srand(time(NULL));
