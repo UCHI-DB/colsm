@@ -26,8 +26,11 @@ const uint32_t MAGIC = 0xCAAEDADE;
 class VertBlockMeta {
  protected:
   uint32_t num_section_;
-  // Section offsets
+  // Section offsets for writing
   std::vector<uint64_t> offsets_;
+
+  uint64_t* offset2_;
+
   uint32_t start_min_;
   uint8_t start_bitwidth_;
   uint8_t* starts_;

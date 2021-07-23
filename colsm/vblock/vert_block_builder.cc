@@ -5,10 +5,52 @@
 #include "vert_block_builder.h"
 
 #include "db/dbformat.h"
-
+#include "byteutils.h"
 #include "table/format.h"
 
 namespace colsm {
+
+VertMetaBuilder::VertMetaBuilder():start_min_(0),start_bitwidth_(0) {}
+
+VertMetaBuilder::~VertMetaBuilder() {}
+
+void VertMetaBuilder::Reset() {
+  starts_plain_.clear();
+  offsets_.clear();
+  start_min_ = 0;
+  start_bitwidth_ = 0;
+}
+
+void VertMetaBuilder::Write(uint8_t* out) {
+  auto pointer = out;
+  auto num_section = offsets_.size();
+  *reinterpret_cast<uint32_t*>(pointer) = num_section;
+  pointer += 4;
+  memcpy(pointer, offsets_.data(), 8 * num_section);
+  pointer += 8 * num_section;
+  *reinterpret_cast<uint32_t*>(pointer) = start_min_;
+  pointer += 4;
+
+  *reinterpret_cast<uint8_t*>(pointer++) = start_bitwidth_;
+  sboost::byteutils::bitpack(starts_plain_.data(), num_section,
+                             start_bitwidth_, (uint8_t*)pointer);
+}
+
+uint32_t VertMetaBuilder::EstimateSize() const {
+  return 9 + offsets_.size() * 8 + BitPackSize();
+}
+
+void VertMetaBuilder::AddSection(uint64_t offset, uint32_t start_value) {
+  if (starts_plain_.empty()) {
+    start_min_ = start_value;
+  }
+  starts_plain_.push_back(start_value - start_min_);
+  offsets_.push_back(offset);
+}
+
+void VertMetaBuilder::Finish() {
+  start_bitwidth_ = 32 - _lzcnt_u32(starts_plain_[starts_plain_.size() - 1]);
+}
 
 VertSectionBuilder::VertSectionBuilder(EncodingType enc_type)
     : num_entry_(0), value_enc_type_(enc_type) {

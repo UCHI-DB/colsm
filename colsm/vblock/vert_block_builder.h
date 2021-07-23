@@ -50,6 +50,43 @@
 using namespace leveldb;
 namespace colsm {
 
+class VertMetaBuilder {
+ private:
+  // Section offsets for writing
+  std::vector<uint64_t> offsets_;
+  uint32_t start_min_;
+  uint8_t start_bitwidth_;
+  std::vector<uint32_t> starts_plain_;
+
+  uint32_t BitPackSize() const {
+    auto num_section = offsets_.size();
+    return (start_bitwidth_ * num_section + 63) >> 6 << 3;
+  }
+ public:
+  VertMetaBuilder();
+
+  virtual ~VertMetaBuilder();
+
+
+  void Reset();
+  /**
+   * Write metadata to the buffer
+   * @return the bytes written
+   */
+  void Write(uint8_t*);
+
+  uint32_t EstimateSize() const;
+
+  /**
+   * Add a section to the meta
+   * @param offset offset in byte of the section
+   * @param start_value start_value of the section
+   */
+  void AddSection(uint64_t offset, uint32_t start_value);
+
+  void Finish();
+};
+
 class VertSectionBuilder {
  private:
   uint32_t num_entry_;
@@ -57,8 +94,8 @@ class VertSectionBuilder {
   EncodingType value_enc_type_;
 
   u32::BitpackEncoder key_encoder_;
-  u64::BitpackEncoder seq_encoder_;
-//  u64::PlainEncoder seq_encoder_;
+//  u64::BitpackEncoder seq_encoder_;
+  u64::PlainEncoder seq_encoder_;
   u8::RleEncoder type_encoder_;
   std::unique_ptr<Encoder> value_encoder_;
 
@@ -120,7 +157,7 @@ class VertBlockBuilder : public BlockBuilder {
 
  private:
   uint32_t section_limit_;
-
+  // TODO Replace this with VertMetaBuilder
   VertBlockMeta meta_;
   VertSectionBuilder current_section_;
 

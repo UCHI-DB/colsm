@@ -112,7 +112,7 @@ void VertBlockMeta::Reset() {
 }
 
 uint32_t VertBlockMeta::SectionOffset(uint32_t sec_index) {
-  return offsets_[sec_index];
+  return offset2_[sec_index];
 }
 
 void VertBlockMeta::AddSection(uint64_t offset, uint32_t start_value) {
@@ -136,8 +136,11 @@ uint32_t VertBlockMeta::Read(const uint8_t* in) {
   auto pointer = in;
   num_section_ = *reinterpret_cast<const uint32_t*>(pointer);
   pointer += 4;
-  offsets_.resize(num_section_);
-  memcpy(offsets_.data(), pointer, num_section_ * 8);
+
+  offset2_ = (uint64_t*)pointer;
+//  offsets_.resize(num_section_);
+//  memcpy(offsets_.data(), pointer, num_section_ * 8);
+
   pointer += num_section_ * 8;
   start_min_ = *reinterpret_cast<const uint32_t*>(pointer);
   pointer += 4;

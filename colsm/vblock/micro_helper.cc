@@ -50,16 +50,22 @@ BlockContents decompress(CompressionType ctype, BlockContents compressed) {
       port::Snappy_GetUncompressedLength(compressed.data.data(),
                                          compressed.data.size(), &ulen);
       auto buffer = new char[ulen];
-      port::Snappy_Uncompress(compressed.data.data(), compressed.data.size(),
-                              buffer);
-      return BlockContents{Slice(buffer, ulen), true, true};
+      if(port::Snappy_Uncompress(compressed.data.data(), compressed.data.size(),
+                              buffer)) {
+        return BlockContents{Slice(buffer, ulen), true, true};
+      } else {
+        return BlockContents{Slice(nullptr,0),false,false};
+      }
     }
     case kZlibCompression: {
       size_t ulen = compressed.data.size() * 2;
       auto buffer = new char[ulen];
-      port::Zlib_Uncompress(compressed.data.data(), compressed.data.size(),
-                            buffer, &ulen);
-      return BlockContents{Slice(buffer, ulen), true, true};
+      if(port::Zlib_Uncompress(compressed.data.data(), compressed.data.size(),
+                            buffer, &ulen)) {
+        return BlockContents{Slice(buffer, ulen), true, true};
+      } else {
+        return BlockContents{Slice(nullptr,0),false,false};
+      }
     }
     case kNoCompression:
     default:

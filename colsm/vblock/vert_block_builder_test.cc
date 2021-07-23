@@ -78,7 +78,8 @@ class VertBlockMetaForTest : public VertBlockMeta {
  public:
   VertBlockMetaForTest() : VertBlockMeta() {}
 
-  std::vector<uint64_t>& Offset() { return offsets_; }
+  std::vector<uint64_t>& OffsetForWrite() { return offsets_; }
+  uint64_t* OffsetForRead() { return offset2_; }
 
   uint8_t StartBitWidth() { return start_bitwidth_; }
 
@@ -117,8 +118,8 @@ TEST(VertBlockBuilder, Build) {
   VertBlockMetaForTest meta;
   meta.Read(data + result.size() - 8 - meta_size);
   EXPECT_EQ(8, meta.NumSection());
-  auto& offset = meta.Offset();
-  EXPECT_EQ(8, offset.size());
+  auto offset = meta.OffsetForRead();
+  EXPECT_EQ(8, meta.NumSection());
   for (auto i = 0; i < 8; ++i) {
     EXPECT_EQ(3257 * i, offset[i]);
   }
@@ -164,8 +165,7 @@ TEST(VertBlockBuilder, Reset) {
     meta.Read(data + result.size() - 8 - meta_size);
 
     EXPECT_EQ(8, meta.NumSection());
-    auto& offset = meta.Offset();
-    EXPECT_EQ(8, offset.size());
+    auto offset = meta.OffsetForRead();
     for (auto i = 0; i < 8; ++i) {
       EXPECT_EQ(3249 * i, offset[i]);
     }

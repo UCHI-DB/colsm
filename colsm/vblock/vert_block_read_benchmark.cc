@@ -127,11 +127,39 @@ BENCHMARK_F(BlockReadBenchmark, Normal)(benchmark::State& state) {
   }
 }
 
-BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State& state) {
+//BENCHMARK_F(BlockReadBenchmark, Vert)(benchmark::State& state) {
+//  for (auto _ : state) {
+//    char at[12];
+//    for (int i = 0; i < 10000; ++i) {
+//      auto ite = vblock_->NewIterator(NULL);
+//      *((uint32_t*)at) = target[i];
+//      Slice t(at, 12);
+//      ite->Seek(t);
+//      benchmark::DoNotOptimize(ite->key());
+//      delete ite;
+//    }
+//  }
+//}
+
+BENCHMARK_F(BlockReadBenchmark, NormalZlib)(benchmark::State& state) {
   for (auto _ : state) {
     char at[12];
     for (int i = 0; i < 10000; ++i) {
-      auto ite = vblock_->NewIterator(NULL);
+      auto ite = cblock_->NewIterator(leveldb::BytewiseComparator());
+      *((uint32_t*)at) = target[i];
+      Slice t(at, 12);
+      ite->Seek(t);
+      benchmark::DoNotOptimize(ite->key());
+      delete ite;
+    }
+  }
+}
+
+BENCHMARK_F(BlockReadBenchmark, VertZlib)(benchmark::State& state) {
+  for (auto _ : state) {
+    char at[12];
+    for (int i = 0; i < 10000; ++i) {
+      auto ite = cvblock_->NewIterator(NULL);
       *((uint32_t*)at) = target[i];
       Slice t(at, 12);
       ite->Seek(t);

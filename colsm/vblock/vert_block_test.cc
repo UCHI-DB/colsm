@@ -165,7 +165,7 @@ TEST(VertSection, Read) {
   *(pointer++) = RUNLENGTH;
   *(uint32_t*)pointer = 208;
   pointer += 4;
-  *(pointer++) = PLAIN;
+  *(pointer++) = LENGTH;
 
   *(uint8_t*)pointer = 8;
   pointer++;
@@ -193,8 +193,18 @@ TEST(VertSection, Find) {
   *(uint32_t*)pointer = 0xFF0500EA;
   pointer += 4;
 
-  *(pointer + 4) = BITPACK;
-  pointer += 20;
+  *(uint32_t*)pointer = 201;
+  pointer += 4;
+  *(pointer++) = BITPACK;
+  *(uint32_t*)pointer = 202;
+  pointer += 4;
+  *(pointer++) = PLAIN;
+  *(uint32_t*)pointer = 204;
+  pointer += 4;
+  *(pointer++) = RUNLENGTH;
+  *(uint32_t*)pointer = 208;
+  pointer += 4;
+  *(pointer++) = LENGTH;
 
   *(uint8_t*)pointer = 8;
   pointer++;
@@ -223,8 +233,27 @@ TEST(VertSection, FindStart) {
   *(uint32_t*)pointer = 0xFF0500EA;
   pointer += 4;
 
+//  *(uint32_t*)pointer = 201;
+//  pointer += 4;
+//  *(pointer++) = BITPACK;
+//  *(uint32_t*)pointer = 202;
+//  pointer += 4;
+//  *(pointer++) = PLAIN;
+//  *(uint32_t*)pointer = 204;
+//  pointer += 4;
+//  *(pointer++) = RUNLENGTH;
+//  *(uint32_t*)pointer = 208;
+//  pointer += 4;
+//  *(pointer++) = LENGTH;
+
   *(pointer + 4) = BITPACK;
-  pointer += 20;
+  pointer+=5;
+  *(pointer+4) = PLAIN;
+  pointer+=5;
+  *(pointer+4) = RUNLENGTH;
+  pointer+=5;
+  *(pointer+4) = LENGTH;
+  pointer+=5;
 
   *(uint8_t*)pointer = 8;
   pointer++;
