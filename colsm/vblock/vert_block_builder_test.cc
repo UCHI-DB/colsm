@@ -52,7 +52,7 @@ TEST(VertSectionBuilder, Write) {
 }
 
 TEST(VertSectionBuilder, EstimateSize) {
-  VertSectionBuilder section(EncodingType::PLAIN);
+  VertSectionBuilder section(EncodingType::LENGTH);
   section.Open(0);
 
   int ik;
@@ -69,7 +69,7 @@ TEST(VertSectionBuilder, EstimateSize) {
     int seq_size = 8 * (i + 1);
     int type_size = 4;
 
-    EXPECT_EQ(28 + bitpack_size + expected_value_size + seq_size + type_size,
+    EXPECT_EQ(36 + bitpack_size + expected_value_size + seq_size + type_size,
               section.EstimateSize());
   }
 }
@@ -133,7 +133,7 @@ TEST(VertBlockBuilder, Reset) {
   auto comparator = intComparator();
   options.comparator = comparator.get();
 
-  VertBlockBuilder builder(&options, PLAIN);
+  VertBlockBuilder builder(&options, LENGTH);
 
   char buffer[12];
   Slice key(buffer, 12);
@@ -152,7 +152,7 @@ TEST(VertBlockBuilder, Reset) {
     // section = 28 + 124 + 832 + 4 + 1664 = 2652
     // meta_size: 4
     // MAGIC: 4
-    EXPECT_EQ(25492, result.size()) << repeat;
+    EXPECT_EQ(25556, result.size()) << repeat;
 
     uint8_t* data = (uint8_t*)result.data();
 
@@ -167,7 +167,7 @@ TEST(VertBlockBuilder, Reset) {
     EXPECT_EQ(8, meta.NumSection());
     auto offset = meta.OffsetForRead();
     for (auto i = 0; i < 8; ++i) {
-      EXPECT_EQ(3249 * i, offset[i]);
+      EXPECT_EQ(3257 * i, offset[i]);
     }
 
     EXPECT_EQ(10, meta.StartBitWidth());

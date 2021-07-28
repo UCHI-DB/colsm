@@ -54,8 +54,8 @@ void VertMetaBuilder::Finish() {
 
 VertSectionBuilder::VertSectionBuilder(EncodingType enc_type)
     : num_entry_(0), value_enc_type_(enc_type) {
-  Encoding& encoding = string::EncodingFactory::Get(enc_type);
-  value_encoder_ = encoding.encoder();
+//  Encoding& encoding = string::EncodingFactory::Get(enc_type);
+//  value_encoder_ = encoding.encoder();
 }
 
 void VertSectionBuilder::Open(uint32_t sv) {
@@ -64,7 +64,7 @@ void VertSectionBuilder::Open(uint32_t sv) {
   key_encoder_.Open();
   seq_encoder_.Open();
   type_encoder_.Open();
-  value_encoder_->Open();
+  value_encoder_.Open();
 }
 
 void VertSectionBuilder::Reset() { num_entry_ = 0; }
@@ -75,19 +75,19 @@ void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
   key_encoder_.Encode((*(uint32_t*)(key.user_key.data()) - start_value_));
   seq_encoder_.Encode(key.sequence);
   type_encoder_.Encode((uint8_t)key.type);
-  value_encoder_->Encode(value);
+  value_encoder_.Encode(value);
 }
 
 uint32_t VertSectionBuilder::EstimateSize() const {
   return 28 + key_encoder_.EstimateSize() + seq_encoder_.EstimateSize() +
-         type_encoder_.EstimateSize() + value_encoder_->EstimateSize();
+         type_encoder_.EstimateSize() + value_encoder_.EstimateSize();
 }
 
 void VertSectionBuilder::Close() {
   key_encoder_.Close();
   seq_encoder_.Close();
   type_encoder_.Close();
-  value_encoder_->Close();
+  value_encoder_.Close();
 }
 
 void VertSectionBuilder::Dump(uint8_t* out) {
@@ -100,7 +100,7 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   auto key_size = key_encoder_.EstimateSize();
   auto seq_size = seq_encoder_.EstimateSize();
   auto type_size = type_encoder_.EstimateSize();
-  auto value_size = value_encoder_->EstimateSize();
+  auto value_size = value_encoder_.EstimateSize();
 
   *((uint32_t*)pointer) = key_size;
   pointer += 4;
@@ -113,7 +113,8 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   *(pointer++) = RUNLENGTH;
   *((uint32_t*)pointer) = value_size;
   pointer += 4;
-  *(pointer++) = value_enc_type_;
+//  *(pointer++) = value_enc_type_;
+  *(pointer++) = LENGTH;
 
   key_encoder_.Dump(pointer);
   pointer += key_size;
@@ -121,7 +122,7 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   pointer += seq_size;
   type_encoder_.Dump(pointer);
   pointer += type_size;
-  value_encoder_->Dump(pointer);
+  value_encoder_.Dump(pointer);
 }
 
 VertBlockBuilder::VertBlockBuilder(const Options* options,

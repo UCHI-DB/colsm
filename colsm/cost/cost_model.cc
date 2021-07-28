@@ -13,11 +13,11 @@ using namespace std;
 static int LEVEL_DEFAULT = 7;
 
 CostModel::CostModel() {
-  if (!ReadModel()) {
+//  if (!ReadModel()) {
     for (auto i = 0; i <= LEVEL_DEFAULT; ++i) {
-      level_vertical_.push_back(false);
+      level_vertical_.push_back(true);
     }
-  }
+//  }
 }
 
 bool CostModel::ReadModel() {
