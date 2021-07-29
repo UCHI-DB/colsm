@@ -49,27 +49,32 @@ void JNICALL Java_site_ycsb_db_colsm_CoLSM_init(JNIEnv* env, jobject caller,
                                                 jbyteArray folder) {
   std::string folder_name = fromByteArray(env, folder);
 
-  auto intCompare = colsm::intComparator().release();
   leveldb::DB* db;
 
-  leveldb::Options options;
-  options.comparator = intCompare;
-  options.create_if_missing = true;
-  options.filter_policy = leveldb::NewBloomFilterPolicy(10);
+  leveldb::Options *options = new leveldb::Options();
+  auto intCompare = colsm::intComparator().release();
+  options->comparator = intCompare;
+  options->create_if_missing = true;
+  options->filter_policy = leveldb::NewBloomFilterPolicy(10);
 
-  leveldb::Status status = leveldb::DB::Open(options, folder_name, &db);
+  leveldb::Status status = leveldb::DB::Open(*options, folder_name, &db);
   if (status.ok()) {
     env->SetLongField(caller, levelDB_db, (int64_t)db);
-    env->SetLongField(caller, levelDB_comparator, (int64_t)intCompare);
+    env->SetLongField(caller, levelDB_comparator, (int64_t)options);
   }
 }
 
 void JNICALL Java_site_ycsb_db_colsm_CoLSM_close(JNIEnv* env, jobject caller) {
   leveldb::DB* db = (leveldb::DB*)env->GetLongField(caller, levelDB_db);
-  leveldb::Comparator* comparator =
-      (leveldb::Comparator*)env->GetLongField(caller, levelDB_comparator);
+  leveldb::Options* options =
+      (leveldb::Options*)env->GetLongField(caller, levelDB_comparator);
+
   delete db;
-  delete comparator;
+
+  delete options->comparator;
+  delete options->filter_policy;
+  delete options;
+
 }
 
 jint JNICALL Java_site_ycsb_db_colsm_CoLSM_put(JNIEnv* env, jobject caller,

@@ -75,6 +75,35 @@ TEST(VertBlockMeta, Write) {
   }
 }
 
+TEST(VertBlockMeta, SingleEntry) {
+  VertBlockMeta meta;
+  meta.AddSection(45, 300);
+  meta.Finish();
+
+  EXPECT_EQ(17, meta.EstimateSize());
+
+  uint8_t buffer[17];
+  memset(buffer, 0, 17);
+  meta.Write(buffer);
+
+  auto pointer = buffer;
+  EXPECT_EQ(1, *(uint32_t*)pointer);
+  pointer += 4;
+
+  EXPECT_EQ(45, *(uint64_t*)pointer);
+  pointer += 8;
+
+  EXPECT_EQ(300, *(uint32_t*)pointer);
+  pointer += 4;
+  EXPECT_EQ(0, *(uint8_t*)pointer);
+
+  VertBlockMeta readMeta;
+  readMeta.Read(buffer);
+
+  ASSERT_EQ(0, readMeta.Search(122));
+  ASSERT_EQ(0, readMeta.Search(900));
+}
+
 TEST(VertBlockMeta, Search) {
   uint8_t buffer[897];
 
@@ -233,27 +262,27 @@ TEST(VertSection, FindStart) {
   *(uint32_t*)pointer = 0xFF0500EA;
   pointer += 4;
 
-//  *(uint32_t*)pointer = 201;
-//  pointer += 4;
-//  *(pointer++) = BITPACK;
-//  *(uint32_t*)pointer = 202;
-//  pointer += 4;
-//  *(pointer++) = PLAIN;
-//  *(uint32_t*)pointer = 204;
-//  pointer += 4;
-//  *(pointer++) = RUNLENGTH;
-//  *(uint32_t*)pointer = 208;
-//  pointer += 4;
-//  *(pointer++) = LENGTH;
+  //  *(uint32_t*)pointer = 201;
+  //  pointer += 4;
+  //  *(pointer++) = BITPACK;
+  //  *(uint32_t*)pointer = 202;
+  //  pointer += 4;
+  //  *(pointer++) = PLAIN;
+  //  *(uint32_t*)pointer = 204;
+  //  pointer += 4;
+  //  *(pointer++) = RUNLENGTH;
+  //  *(uint32_t*)pointer = 208;
+  //  pointer += 4;
+  //  *(pointer++) = LENGTH;
 
   *(pointer + 4) = BITPACK;
-  pointer+=5;
-  *(pointer+4) = PLAIN;
-  pointer+=5;
-  *(pointer+4) = RUNLENGTH;
-  pointer+=5;
-  *(pointer+4) = LENGTH;
-  pointer+=5;
+  pointer += 5;
+  *(pointer + 4) = PLAIN;
+  pointer += 5;
+  *(pointer + 4) = RUNLENGTH;
+  pointer += 5;
+  *(pointer + 4) = LENGTH;
+  pointer += 5;
 
   *(uint8_t*)pointer = 8;
   pointer++;
@@ -275,14 +304,38 @@ TEST(VertSection, FindStart) {
   EXPECT_EQ(-1, section.FindStart(0xFF050900));
 }
 
+TEST(VertSection, SingleEntry) {
+  VertSectionBuilder builder;
+  builder.Open(111);
+  int value = 111;
+  builder.Add(
+      ParsedInternalKey(Slice((char*)&value, 4), 1000, ValueType::kTypeValue),
+      Slice("This is a value"));
+  uint8_t buffer[100];
+  memset(buffer,0,100);
+  builder.Close();
+  builder.Dump(buffer);
+
+  VertSection section;
+  section.Read(buffer);
+
+  ASSERT_EQ(0,section.BitWidth());
+  ASSERT_EQ(1,section.NumEntry());
+  ASSERT_EQ(111,section.StartValue());
+
+  ASSERT_EQ(0,section.KeyDecoder()->DecodeU32());
+  ASSERT_EQ(1000,section.SeqDecoder()->DecodeU64());
+  ASSERT_EQ(1,section.TypeDecoder()->DecodeU8());
+}
+
 TEST(VertBlock, SeekToFirst) {
   Options option;
-  VertBlockBuilder builder(&option,LENGTH);
+  VertBlockBuilder builder(&option, LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);
   for (uint32_t i = 0; i < 1000000; ++i) {
-    *((uint32_t*)buffer) = 0xFF000000+i;
+    *((uint32_t*)buffer) = 0xFF000000 + i;
     EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
     builder.Add(key, key);
   }
@@ -317,12 +370,12 @@ TEST(VertBlock, SeekToFirst) {
 
 TEST(VertBlock, SeekToLast) {
   Options option;
-  VertBlockBuilder builder(&option,LENGTH);
+  VertBlockBuilder builder(&option, LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);
   for (uint32_t i = 0; i < 1000000; ++i) {
-    *((int32_t*)buffer) = 0xF0000000+i;
+    *((int32_t*)buffer) = 0xF0000000 + i;
     EncodeFixed64(buffer + 4, (1350 << 8) | ValueType::kTypeValue);
     builder.Add(key, key);
   }
@@ -357,7 +410,7 @@ TEST(VertBlock, SeekToLast) {
 
 TEST(VertBlock, Next) {
   Options option;
-  VertBlockBuilder builder(&option,LENGTH);
+  VertBlockBuilder builder(&option, LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);
@@ -396,7 +449,7 @@ TEST(VertBlock, Next) {
 
 TEST(VertBlock, Seek) {
   Options option;
-  VertBlockBuilder builder(&option,LENGTH);
+  VertBlockBuilder builder(&option, LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);
@@ -545,7 +598,7 @@ TEST(VertBlock, Seek) {
 
 TEST(VertBlockTest, SeekThenNext) {
   Options option;
-  VertBlockBuilder builder(&option,LENGTH);
+  VertBlockBuilder builder(&option, LENGTH);
 
   char buffer[12];
   Slice key((const char*)buffer, 12);

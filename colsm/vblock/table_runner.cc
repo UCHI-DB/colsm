@@ -13,8 +13,8 @@
 
 using namespace leveldb;
 
-uint64_t num_entry = 1000000;
-CompressionType compressionType = kNoCompression;
+uint64_t num_entry = 45000;
+CompressionType compressionType = kZlibCompression;
 
 bool binary_sorter(uint64_t a, uint64_t b) { return memcmp(&a, &b, 8) < 0; }
 

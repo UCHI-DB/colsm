@@ -101,6 +101,8 @@ class VertSectionBuilder {
 //  std::unique_ptr<Encoder> value_encoder_;
 
  public:
+  VertSectionBuilder();
+
   VertSectionBuilder(EncodingType enc_type);
 
   virtual ~VertSectionBuilder() = default;

@@ -5,12 +5,14 @@
 #include "vert_block_builder.h"
 
 #include "db/dbformat.h"
-#include "byteutils.h"
+
 #include "table/format.h"
+
+#include "byteutils.h"
 
 namespace colsm {
 
-VertMetaBuilder::VertMetaBuilder():start_min_(0),start_bitwidth_(0) {}
+VertMetaBuilder::VertMetaBuilder() : start_min_(0), start_bitwidth_(0) {}
 
 VertMetaBuilder::~VertMetaBuilder() {}
 
@@ -32,8 +34,8 @@ void VertMetaBuilder::Write(uint8_t* out) {
   pointer += 4;
 
   *reinterpret_cast<uint8_t*>(pointer++) = start_bitwidth_;
-  sboost::byteutils::bitpack(starts_plain_.data(), num_section,
-                             start_bitwidth_, (uint8_t*)pointer);
+  sboost::byteutils::bitpack(starts_plain_.data(), num_section, start_bitwidth_,
+                             (uint8_t*)pointer);
 }
 
 uint32_t VertMetaBuilder::EstimateSize() const {
@@ -52,10 +54,12 @@ void VertMetaBuilder::Finish() {
   start_bitwidth_ = 32 - _lzcnt_u32(starts_plain_[starts_plain_.size() - 1]);
 }
 
+VertSectionBuilder::VertSectionBuilder(): VertSectionBuilder(LENGTH){}
+
 VertSectionBuilder::VertSectionBuilder(EncodingType enc_type)
     : num_entry_(0), value_enc_type_(enc_type) {
-//  Encoding& encoding = string::EncodingFactory::Get(enc_type);
-//  value_encoder_ = encoding.encoder();
+  //  Encoding& encoding = string::EncodingFactory::Get(enc_type);
+  //  value_encoder_ = encoding.encoder();
 }
 
 void VertSectionBuilder::Open(uint32_t sv) {
@@ -113,7 +117,7 @@ void VertSectionBuilder::Dump(uint8_t* out) {
   *(pointer++) = RUNLENGTH;
   *((uint32_t*)pointer) = value_size;
   pointer += 4;
-//  *(pointer++) = value_enc_type_;
+  //  *(pointer++) = value_enc_type_;
   *(pointer++) = LENGTH;
 
   key_encoder_.Dump(pointer);
@@ -160,6 +164,8 @@ void VertBlockBuilder::DumpSection() {
   // Write section to buffer
   auto buffer_end = buffer_.size();
   buffer_.resize(buffer_end + section_size);
+  // Clear the region
+  memset(buffer_.data() + buffer_end, 0, section_size);
   current_section_.Dump(buffer_.data() + buffer_end);
   current_section_.Reset();
 }
@@ -183,6 +189,7 @@ Slice VertBlockBuilder::Finish() {
   auto buffer_end = buffer_.size();
   buffer_.resize(buffer_end + meta_size + 8);
   auto pointer = buffer_.data() + buffer_end;
+  memset(pointer, 0, meta_size);
   meta_.Write(pointer);
   pointer += meta_size;
   // Meta size

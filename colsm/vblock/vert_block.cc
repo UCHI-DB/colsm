@@ -125,7 +125,7 @@ void VertBlockMeta::AddSection(uint64_t offset, uint32_t start_value) {
 }
 
 int32_t VertBlockMeta::Search(uint32_t value) {
-  if (value < start_min_) {
+  if (value < start_min_ || start_bitwidth_ == 0) {
     return 0;
   }
   return section_packed(starts_, num_section_, start_bitwidth_,
@@ -138,8 +138,8 @@ uint32_t VertBlockMeta::Read(const uint8_t* in) {
   pointer += 4;
 
   offset2_ = (uint64_t*)pointer;
-//  offsets_.resize(num_section_);
-//  memcpy(offsets_.data(), pointer, num_section_ * 8);
+  //  offsets_.resize(num_section_);
+  //  memcpy(offsets_.data(), pointer, num_section_ * 8);
 
   pointer += num_section_ * 8;
   start_min_ = *reinterpret_cast<const uint32_t*>(pointer);
@@ -169,9 +169,10 @@ void VertBlockMeta::Write(uint8_t* out) {
   pointer += 4;
 
   *reinterpret_cast<uint8_t*>(pointer++) = start_bitwidth_;
-  sboost::byteutils::bitpack(starts_plain_.data(), num_section_,
-                             start_bitwidth_, (uint8_t*)pointer);
-
+  if(start_bitwidth_> 0) {
+    sboost::byteutils::bitpack(starts_plain_.data(), num_section_,
+                               start_bitwidth_, (uint8_t*)pointer);
+  }
   //  memcpy(pointer, starts_, (start_bitwidth_ * num_section_ + 7) >> 3);
 }
 
@@ -201,21 +202,21 @@ void VertSection::Read(const uint8_t* in) {
   bit_width_ = *(pointer);
   key_data_ = pointer + 1;
   assert(key_enc == BITPACK);
-//  key_decoder_ = u32::EncodingFactory::Get(BITPACK).decoder();
+  //  key_decoder_ = u32::EncodingFactory::Get(BITPACK).decoder();
   key_decoder_.Attach(pointer);
   pointer += key_size;
 
-//  seq_decoder_ = u64::EncodingFactory::Get(seq_enc).decoder();
+  //  seq_decoder_ = u64::EncodingFactory::Get(seq_enc).decoder();
   assert(seq_enc == PLAIN);
   seq_decoder_.Attach(pointer);
   pointer += seq_size;
 
-//  type_decoder_ = u8::EncodingFactory::Get(type_enc).decoder();
+  //  type_decoder_ = u8::EncodingFactory::Get(type_enc).decoder();
   assert(type_enc = RUNLENGTH);
   type_decoder_.Attach(pointer);
   pointer += type_size;
 
-//  value_decoder_= string::EncodingFactory::Get(value_enc).decoder();
+  //  value_decoder_= string::EncodingFactory::Get(value_enc).decoder();
   assert(value_enc == LENGTH);
   value_decoder_.Attach(pointer);
 }
@@ -246,9 +247,8 @@ VertBlockCore::VertBlockCore(const BlockContents& data)
     : raw_data_((uint8_t*)data.data.data()),
       size_(data.data.size()),
       owned_(data.heap_allocated) {
-
-  auto meta_size = *((uint32_t*)(raw_data_ + size_-8));
-  meta_.Read(raw_data_+size_-8-meta_size);
+  auto meta_size = *((uint32_t*)(raw_data_ + size_ - 8));
+  meta_.Read(raw_data_ + size_ - 8 - meta_size);
   content_data_ = raw_data_;
 }
 
@@ -303,7 +303,7 @@ class VertBlockCore::VIter : public Iterator {
         meta_(meta),
         data_pointer_(data),
         key_(key_buffer_, 12) {
-//    ReadSection(0);
+    //    ReadSection(0);
   }
 
   void Seek(const Slice& target) override {

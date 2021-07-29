@@ -445,9 +445,15 @@ void BitpackDecoder::LoadNextGroup() {
 void BitpackDecoder::Attach(const uint8_t* buffer) {
   base_ = buffer;
   bit_width_ = *buffer;
-  pointer_ = (uint8_t*)buffer + 1;
-  unpacker_ = sboost::unpackers[bit_width_];
-  LoadNextGroup();
+  if(bit_width_==0) {
+    // A single value of 0
+    unpacked_[0] = 0;
+    index_ = 0;
+  } else {
+    pointer_ = (uint8_t*)buffer + 1;
+    unpacker_ = sboost::unpackers[bit_width_];
+    LoadNextGroup();
+  }
 }
 
 void BitpackDecoder::Skip(uint32_t offset) {
