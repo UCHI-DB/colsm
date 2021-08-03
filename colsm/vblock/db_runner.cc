@@ -14,6 +14,7 @@ int main() {
   leveldb::DB* db;
 
   leveldb::Options options;
+  options.block_size=2*1024*1024;
   options.comparator = intCompare;
   options.create_if_missing = true;
   options.filter_policy = leveldb::NewBloomFilterPolicy(10);

@@ -16,7 +16,7 @@ inline jint translate(leveldb::Status status) { return status.intcode(); }
 
 static jclass levelDB_Class;
 static jfieldID levelDB_db;
-static jfieldID levelDB_comparator;
+static jfieldID levelDB_options;
 
 jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
   // Obtain the JNIEnv from the VM and confirm JNI_VERSION
@@ -31,7 +31,7 @@ jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
 
   // Load the method id
   levelDB_db = env->GetFieldID(levelDB_Class, "db", "J");
-  levelDB_comparator = env->GetFieldID(levelDB_Class, "comparator", "J");
+  levelDB_options = env->GetFieldID(levelDB_Class, "options", "J");
 
   return JNI_VERSION_9;
 }
@@ -61,14 +61,14 @@ void JNICALL Java_site_ycsb_db_colsm_CoLSM_init(JNIEnv* env, jobject caller,
   leveldb::Status status = leveldb::DB::Open(*options, folder_name, &db);
   if (status.ok()) {
     env->SetLongField(caller, levelDB_db, (int64_t)db);
-    env->SetLongField(caller, levelDB_comparator, (int64_t)options);
+    env->SetLongField(caller, levelDB_options, (int64_t)options);
   }
 }
 
 void JNICALL Java_site_ycsb_db_colsm_CoLSM_close(JNIEnv* env, jobject caller) {
   leveldb::DB* db = (leveldb::DB*)env->GetLongField(caller, levelDB_db);
   leveldb::Options* options =
-      (leveldb::Options*)env->GetLongField(caller, levelDB_comparator);
+      (leveldb::Options*)env->GetLongField(caller, levelDB_options);
 
   delete db;
 
