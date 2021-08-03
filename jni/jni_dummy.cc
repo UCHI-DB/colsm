@@ -16,7 +16,6 @@ std::string fromByteArray(JNIEnv *env, jbyteArray input) {
 
 static jclass levelDB_Class;
 static jfieldID levelDB_db;
-static jfieldID levelDB_comparator;
 
 jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     // Obtain the JNIEnv from the VM and confirm JNI_VERSION
@@ -31,7 +30,6 @@ jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
     // Load the method id
     levelDB_db = env->GetFieldID(levelDB_Class, "db", "J");
-    levelDB_comparator = env->GetFieldID(levelDB_Class, "comparator", "J");
 
     return JNI_VERSION_9;
 }
