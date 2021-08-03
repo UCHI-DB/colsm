@@ -55,6 +55,7 @@ void JNICALL Java_site_ycsb_db_colsm_CoLSM_init(JNIEnv* env, jobject caller,
   auto intCompare = colsm::intComparator().release();
   options->comparator = intCompare;
   options->create_if_missing = true;
+  options->block_size=2*1024*1024;
   options->filter_policy = leveldb::NewBloomFilterPolicy(10);
 
   leveldb::Status status = leveldb::DB::Open(*options, folder_name, &db);
