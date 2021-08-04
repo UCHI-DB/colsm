@@ -4,11 +4,9 @@
 
 #include "vert_block.h"
 
-#include <immintrin.h>
 #include <util/coding.h>
 
 #include "byteutils.h"
-#include "sboost.h"
 #include "unpacker.h"
 
 namespace colsm {
@@ -27,7 +25,7 @@ int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
     auto index = bits >> 3;
     auto offset = bits & 0x7;
 
-    auto extracted = (*(uint32_t*)(data + index) >> offset) & mask;
+    auto extracted = (*(uint64_t*)(data + index) >> offset) & mask;
 
     if (extracted == target) {
       return current;
@@ -57,7 +55,7 @@ int geq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
     auto index = bits >> 3;
     auto offset = bits & 0x7;
 
-    auto extracted = (*(uint32_t*)(data + index) >> offset) & mask;
+    uint32_t extracted = (*(uint64_t*)(data + index) >> offset) & mask;
 
     if (extracted == target) {
       return current;
@@ -86,7 +84,7 @@ int section_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
     auto index = bits >> 3;
     auto offset = bits & 0x7;
 
-    auto extracted = (*(uint32_t*)(data + index) >> offset) & mask;
+    auto extracted = (*(uint64_t*)(data + index) >> offset) & mask;
 
     if (extracted <= target) {
       begin = current;
@@ -308,7 +306,7 @@ class VertBlockCore::VIter : public Iterator {
 
   void Seek(const Slice& target) override {
     // Scan through blocks
-    int32_t target_key = *reinterpret_cast<const int32_t*>(target.data());
+    uint32_t target_key = *reinterpret_cast<const uint32_t*>(target.data());
 
     auto new_section_index = meta_.Search(target_key);
     if (new_section_index != section_index_) {
@@ -369,9 +367,13 @@ class VertBlockCore::VIter : public Iterator {
            section_index_ < meta_.NumSection() - 1;
   }
 
-  Slice key() const override { return key_; }
+  Slice key() const override {
+    return key_;
+  }
 
-  Slice value() const override { return value_; }
+  Slice value() const override {
+    return value_;
+  }
 
   Status status() const override { return status_; }
 };

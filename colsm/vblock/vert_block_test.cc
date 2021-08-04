@@ -328,6 +328,10 @@ TEST(VertSection, SingleEntry) {
   ASSERT_EQ(1,section.TypeDecoder()->DecodeU8());
 }
 
+TEST(VertSection, LargeBitWidthSearch) {
+  FAIL() << "not implemented";
+}
+
 TEST(VertBlock, SeekToFirst) {
   Options option;
   VertBlockBuilder builder(&option, LENGTH);
@@ -596,7 +600,7 @@ TEST(VertBlock, Seek) {
   }
 }
 
-TEST(VertBlockTest, SeekThenNext) {
+TEST(VertBlock, SeekThenNext) {
   Options option;
   VertBlockBuilder builder(&option, LENGTH);
 

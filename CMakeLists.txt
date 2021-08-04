@@ -341,13 +341,17 @@ add_executable(table_runner colsm/vblock/table_runner.cc)
 target_link_libraries(table_runner PRIVATE leveldb)
 target_compile_options(table_runner PUBLIC ${SBOOST_SIMD_FLAGS})
 
-add_executable(db_runner colsm/vblock/db_runner.cc)
-target_link_libraries(db_runner PRIVATE leveldb)
-target_compile_options(db_runner PUBLIC ${SBOOST_SIMD_FLAGS})
+add_executable(db_loader colsm/vblock/db_loader.cc)
+target_link_libraries(db_loader PRIVATE leveldb)
+target_compile_options(db_loader PUBLIC ${SBOOST_SIMD_FLAGS})
 
-add_executable(colsm_table_printer colsm/tool/table_printer.cc)
-target_link_libraries(colsm_table_printer PRIVATE leveldb)
-target_compile_options(colsm_table_printer PUBLIC ${SBOOST_SIMD_FLAGS})
+add_executable(db_searcher colsm/vblock/db_searcher.cc)
+target_link_libraries(db_searcher PRIVATE leveldb)
+target_compile_options(db_searcher PUBLIC ${SBOOST_SIMD_FLAGS})
+
+add_executable(table_printer colsm/tool/table_printer.cc)
+target_link_libraries(table_printer PRIVATE leveldb)
+target_compile_options(table_printer PUBLIC ${SBOOST_SIMD_FLAGS})
 
 add_subdirectory(jni)
 add_subdirectory(colsm/cost)

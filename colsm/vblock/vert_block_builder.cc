@@ -54,7 +54,7 @@ void VertMetaBuilder::Finish() {
   start_bitwidth_ = 32 - _lzcnt_u32(starts_plain_[starts_plain_.size() - 1]);
 }
 
-VertSectionBuilder::VertSectionBuilder(): VertSectionBuilder(LENGTH){}
+VertSectionBuilder::VertSectionBuilder() : VertSectionBuilder(LENGTH) {}
 
 VertSectionBuilder::VertSectionBuilder(EncodingType enc_type)
     : num_entry_(0), value_enc_type_(enc_type) {
@@ -75,8 +75,12 @@ void VertSectionBuilder::Reset() { num_entry_ = 0; }
 
 void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
   num_entry_++;
-
-  key_encoder_.Encode((*(uint32_t*)(key.user_key.data()) - start_value_));
+  uint32_t user_key_int = *((uint32_t*)key.user_key.data());
+  if (user_key_int == 3436258842) {
+    user_key_int += 1;
+    user_key_int -= 1;
+  }
+  key_encoder_.Encode(user_key_int - start_value_);
   seq_encoder_.Encode(key.sequence);
   type_encoder_.Encode((uint8_t)key.type);
   value_encoder_.Encode(value);

@@ -4,6 +4,12 @@
 #include "colsm/comparators.h"
 #include "site_ycsb_db_colsm_CoLSM.h"
 
+#define LOGGING
+
+#ifdef LOGGING
+#include <fstream>
+#endif
+
 std::string fromByteArray(JNIEnv* env, jbyteArray input) {
   jint length = env->GetArrayLength(input);
   std::string result;
