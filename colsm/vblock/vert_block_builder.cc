@@ -76,10 +76,6 @@ void VertSectionBuilder::Reset() { num_entry_ = 0; }
 void VertSectionBuilder::Add(ParsedInternalKey key, const Slice& value) {
   num_entry_++;
   uint32_t user_key_int = *((uint32_t*)key.user_key.data());
-  if (user_key_int == 3436258842) {
-    user_key_int += 1;
-    user_key_int -= 1;
-  }
   key_encoder_.Encode(user_key_int - start_value_);
   seq_encoder_.Encode(key.sequence);
   type_encoder_.Encode((uint8_t)key.type);
