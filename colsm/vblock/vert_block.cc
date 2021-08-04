@@ -13,8 +13,30 @@ namespace colsm {
 
 using namespace encoding;
 
+int eq(const uint8_t* data, uint32_t num_entry, uint32_t target) {
+  uint32_t* data32 = (uint32_t*)data;
+  uint32_t begin = 0;
+  uint32_t end = num_entry - 1;
+  while (begin <= end) {
+    auto current = (begin + end + 1) / 2;
+    auto extracted = data32[current];
+    if (extracted == target) {
+      return current;
+    }
+    if (extracted > target) {
+      end = current - 1;
+    } else {
+      begin = current + 1;
+    }
+  }
+  return -1;
+}
+
 int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
               uint32_t target) {
+  if (bitwidth == 32) {
+    return eq(data, num_entry, target);
+  }
   uint32_t mask = (1 << bitwidth) - 1;
   uint32_t begin = 0;
   uint32_t end = num_entry - 1;
@@ -39,9 +61,31 @@ int eq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
   return -1;
 }
 
+int geq(const uint8_t* data, uint32_t num_entry, uint32_t target) {
+  uint32_t* data32 = (uint32_t*)data;
+  uint32_t begin = 0;
+  uint32_t end = num_entry - 1;
+  while (begin <= end) {
+    auto current = (begin + end + 1) / 2;
+    uint32_t extracted = data32[current];
+    if (extracted == target) {
+      return current;
+    }
+    if (extracted > target) {
+      end = current - 1;
+    } else {
+      begin = current + 1;
+    }
+  }
+  return begin;
+}
+
 // Return the first entry larger or equal to the target
 int geq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
                uint32_t target) {
+  if (bitwidth == 32) {
+    return geq(data, num_entry, target);
+  }
   uint32_t mask = (1 << bitwidth) - 1;
   if (target > mask) {
     return num_entry;
@@ -68,9 +112,29 @@ int geq_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
   }
   return begin;
 }
+
+// Return the last entry with a key smaller or equal to target
+int section_bsearch(const uint8_t* data, uint32_t num_entry, uint32_t target) {
+  uint32_t* data32 = (uint32_t*)data;
+  uint32_t begin = 0;
+  uint32_t end = num_entry - 1;
+  while (begin < end) {
+    auto current = (begin + end + 1) / 2;
+    auto extracted = data32[current];
+    if (extracted <= target) {
+      begin = current;
+    } else {
+      end = current - 1;
+    }
+  }
+  return begin;
+}
 // Return the last entry with a key smaller or equal to target
 int section_packed(const uint8_t* data, uint32_t num_entry, uint8_t bitwidth,
                    uint32_t target) {
+  if (bitwidth == 32) {
+    return section_bsearch(data, num_entry, target);
+  }
   uint32_t mask = (1 << bitwidth) - 1;
   if (target > mask) {
     return num_entry - 1;
@@ -167,7 +231,7 @@ void VertBlockMeta::Write(uint8_t* out) {
   pointer += 4;
 
   *reinterpret_cast<uint8_t*>(pointer++) = start_bitwidth_;
-  if(start_bitwidth_> 0) {
+  if (start_bitwidth_ > 0) {
     sboost::byteutils::bitpack(starts_plain_.data(), num_section_,
                                start_bitwidth_, (uint8_t*)pointer);
   }
@@ -367,13 +431,9 @@ class VertBlockCore::VIter : public Iterator {
            section_index_ < meta_.NumSection() - 1;
   }
 
-  Slice key() const override {
-    return key_;
-  }
+  Slice key() const override { return key_; }
 
-  Slice value() const override {
-    return value_;
-  }
+  Slice value() const override { return value_; }
 
   Status status() const override { return status_; }
 };

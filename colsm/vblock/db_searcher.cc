@@ -21,9 +21,13 @@ void search(leveldb::DB* db) {
     search_log.read(key_data.data(), key_length);
 
     s = db->Get(leveldb::ReadOptions(), key_data, &value);
-    std::cout << (counter++) << '\n';
-    std::cout << key_data.size() << '\n';
-    std::cout << value.size() << std::endl;
+    if(s.IsNotFound()) {
+      std::cout << "Not Found" << '\n';
+    } else {
+//      std::cout << (counter++) << '\n';
+//      std::cout << key_data.size() << '\n';
+//      std::cout << value.size() << std::endl;
+    }
   }
 }
 
