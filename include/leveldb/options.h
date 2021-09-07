@@ -116,6 +116,8 @@ struct LEVELDB_EXPORT Options {
   // initially populating a large database.
   size_t max_file_size = 2 * 1024 * 1024;
 
+  // Enhance LevelDB to use larger files on higher levels
+  size_t size_factor = 10;
   // Compress blocks using the specified compression algorithm.  This
   // parameter can be changed dynamically.
   //
