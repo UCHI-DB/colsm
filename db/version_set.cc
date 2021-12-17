@@ -4,16 +4,17 @@
 
 #include "db/version_set.h"
 
-#include <algorithm>
-#include <cstdio>
-
 #include "db/filename.h"
 #include "db/log_reader.h"
 #include "db/log_writer.h"
 #include "db/memtable.h"
 #include "db/table_cache.h"
+#include <algorithm>
+#include <cstdio>
+
 #include "leveldb/env.h"
 #include "leveldb/table_builder.h"
+
 #include "table/merger.h"
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
@@ -43,9 +44,9 @@ static double MaxBytesForLevel(const Options* options, int level) {
   // the level-0 compaction threshold based on number of files.
 
   // Result for both level-0 and level-1
-  double result = 10. * 1048576.0;
+  double result = options->size_factor * TargetFileSize(options);
   while (level > 1) {
-    result *= 10;
+    result *= options->size_factor;
     level--;
   }
   return result;
@@ -53,7 +54,7 @@ static double MaxBytesForLevel(const Options* options, int level) {
 
 static uint64_t MaxFileSizeForLevel(const Options* options, int level) {
   // We could vary per level to reduce number of files?
-  return TargetFileSize(options);
+  return MaxBytesForLevel(options, level);
 }
 
 static int64_t TotalFileSize(const std::vector<FileMetaData*>& files) {
