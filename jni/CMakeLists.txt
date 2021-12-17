@@ -1,3 +1,4 @@
+set(JAVA_HOME "/usr/lib/jvm/java-17-openjdk-amd64/")
 find_package(JNI REQUIRED)
 
 include_directories(${JNI_INCLUDE_DIRS})
