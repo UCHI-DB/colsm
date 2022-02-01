@@ -330,16 +330,16 @@ add_executable(leveldbutil
 )
 target_link_libraries(leveldbutil leveldb)
 
-add_executable(colsm_runner "colsm/runner.cc")
+add_executable(colsm_runner "colsm/experiment/runner.cc")
 target_link_libraries(colsm_runner leveldb)
 
-add_executable(block_runner colsm/vblock/block_runner.cc)
+add_executable(block_runner colsm/experiment/block_runner.cc)
 target_link_libraries(block_runner PRIVATE leveldb)
 target_compile_options(block_runner PUBLIC ${SBOOST_SIMD_FLAGS})
 
-add_executable(table_runner colsm/vblock/table_runner.cc)
-target_link_libraries(table_runner PRIVATE leveldb)
-target_compile_options(table_runner PUBLIC ${SBOOST_SIMD_FLAGS})
+add_executable(table_size colsm/experiment/table_size.cc)
+target_link_libraries(table_size PRIVATE leveldb)
+target_compile_options(table_size PUBLIC ${SBOOST_SIMD_FLAGS})
 
 add_executable(db_loader colsm/vblock/db_loader.cc)
 target_link_libraries(db_loader PRIVATE leveldb)

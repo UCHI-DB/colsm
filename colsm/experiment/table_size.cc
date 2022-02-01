@@ -6,15 +6,15 @@
 // comment line 178
 //
 #include "db/dbformat.h"
-#include <colsm/comparators.h>
+#include "include/colsm/comparators.h"
 #include <iostream>
-#include <leveldb/env.h>
-#include <leveldb/table_builder.h>
+#include "include/leveldb/env.h"
+#include "include/leveldb/table_builder.h"
 
 using namespace leveldb;
 
 uint64_t num_entry = 45000;
-CompressionType compressionType = kZlibCompression;
+CompressionType compressionType = kNoCompression;
 
 bool binary_sorter(uint64_t a, uint64_t b) { return memcmp(&a, &b, 8) < 0; }
 

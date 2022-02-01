@@ -12,9 +12,9 @@
 #include "table/format.h"
 
 #include "colsm/comparators.h"
-#include "sortmerge_iterator.h"
-#include "vert_block.h"
-#include "vert_block_builder.h"
+#include "colsm/vblock/sortmerge_iterator.h"
+#include "colsm/vblock/vert_block.h"
+#include "colsm/vblock/vert_block_builder.h"
 
 using namespace std;
 using namespace leveldb;
